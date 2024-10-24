@@ -1,0 +1,135 @@
+
+.form {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap; /* 반응형 배치를 위해 줄바꿈 허용 */
+  }
+
+  .textInput {
+    flex: 1;
+    min-width: 200px; /* 최소 크기 지정 */
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+
+  .button {
+    padding: 8px 12px;
+    border: none;
+    background-color: #3498db;
+    color: white;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+    flex-shrink: 0; /* 버튼이 작아지지 않도록 설정 */
+    margin-right: 0.5rem;
+  }
+
+  .button:hover {
+    background-color: #2980b9;
+  }
+
+  .guide {
+    color: #999;
+    margin-top: 5px;
+  }
+
+  /* 반응형 스타일 */
+  @media (max-width: 768px) {
+    .row {
+      flex-direction: column; /* 화면이 좁아지면 세로로 정렬 */
+    }
+
+    .button {
+      width: 100%; /* 작은 화면에서는 버튼이 가득 차게 */
+    }
+  }
+
+  .modalBackdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal {
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    max-width: 400px;
+    width: 100%;
+  }
+
+  .modal h2 {
+    margin-top: 0;
+  }
+
+  .modal form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal form div {
+    margin-bottom: 10px;
+  }
+
+  .cardContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .card {
+    width: 300px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    background-color: #fff;
+  }
+  .card:hover {
+    background-color: #928c8c4b;
+    cursor: pointer;
+  }
+
+  .cardTitle {
+    font-size: 1.25rem;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+
+  .card p {
+    margin: 4px 0;
+  }
+
+  .button {
+    margin-top: 16px;
+    padding: 10px 20px;
+    border: none;
+    background-color: #4caf50;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .button:hover {
+    background-color: #45a049;
+  }
+

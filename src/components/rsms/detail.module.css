@@ -1,0 +1,11 @@
+/* swiper.module.css */
+.loginForm {
+    display: block;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* 화면 밖의 슬라이드 숨기기 */
+    margin: auto;
+    height: 50vh; /* 전체 화면 높이 */
+    width: 60vh;
+    border: 1px solid;
+}

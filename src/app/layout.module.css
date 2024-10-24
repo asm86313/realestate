@@ -9,6 +9,7 @@
 }
 
 .aside{
+    display: grid;
     width: 15%; /* 사이드바의 너비 설정 */
     background-color: #e0e0e0;
     padding: 1rem;

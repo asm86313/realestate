@@ -2,6 +2,7 @@ import "./globals.css";
 import ClientLayout from "@/components/layout";""
 import localFont from "next/font/local";
 import css from "./layout.module.css";
+import { Provider } from 'react-redux'; // react-redux에서 Provider 임포트
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -28,7 +29,9 @@ export default function RootLayout({ children }) {
                 <nav>Navigation Bar</nav>
             </header>
             <aside className={css.aside}>
-              safsfd
+            <a href="/rsms">Go to rsms</a>
+            <a href="/">Go to List</a>
+            <a href="/">Go to List</a>
             </aside>
             <main className={css.main}>
                 <ClientLayout>

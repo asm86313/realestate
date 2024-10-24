@@ -55,7 +55,7 @@ export default function SignupModal({ isOpen, onClose }) {
           <div>
             <label htmlFor="userid">아이디:</label>
             <input
-              type="userid"
+              type="text"
               id="userid"
               value={userid}
               onChange={(e) => setUserid(e.target.value)}
