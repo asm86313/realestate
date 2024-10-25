@@ -1,0 +1,74 @@
+
+/* 햄버거 버튼 스타일 */
+.hamburger {
+  display: none;
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  font-size: 2rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* 작은 화면에서 햄버거 버튼 표시 */
+@media (max-width: 768px) {
+  .hamburger {
+    display: block;
+  }
+}
+
+/* 사이드바 기본 스타일 */
+.aside {
+  position: fixed;
+  top: 0;
+  left: -100%;
+  width: 15%; /* 사이드바 너비 */
+  height: 100vh;
+  background-color: #e0e0e0;
+  padding: 1rem;
+  display: flex; /* 플렉스 레이아웃 적용 */
+  flex-direction: column; /* 세로 정렬 */
+  gap: 1rem; /* 링크 사이 간격 추가 */
+  overflow-y: auto; /* 스크롤 가능 */
+  z-index: 100; /* 다른 요소 위에 표시 */
+}
+
+/* 사이드바 열림 상태 */
+.open {
+  transform: translateX(100%);
+}
+
+/* 작은 화면에서는 사이드바 너비 조정 */
+@media (max-width: 768px) {
+  .aside {
+    width: 100%;
+  }
+}
+
+@media (min-width: 769px) {
+  .aside {
+    left: 0%;
+  }
+}
+
+.button {
+  padding: 8px 12px;
+  border: none;
+  background-color: #3498db;
+  color: white;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0; /* 버튼이 작아지지 않도록 설정 */
+}
+
+.button:hover {
+  background-color: #2980b9;
+}
+
+@media (min-width: 769px) {
+  .button {
+    display: none;
+  }
+}

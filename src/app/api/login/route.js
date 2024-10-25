@@ -33,10 +33,10 @@ export async function GET(request) {
   const [result1] = await pool.query('SELECT * FROM users');
 
   setTimeout(() => {
-  console.log('resulet get', result1)
-  
-}, 1000);
-return new Response(JSON.stringify({ message: 'Login successful' }), { status: 200 });
+    console.log('resulet get', result1)
+
+  }, 1000);
+  return new Response(JSON.stringify({ message: 'Login successful' }), { status: 200 });
 
 }
 

@@ -9,12 +9,12 @@ import { dataBaseUrl, dataServicekey } from "@/utils/constants";
 
 export default function BldInfo({setSelectedInfo}) {
 
-	const [address, setAddress] = useState('');
-	const [subCity, setSubCity] = useState('');
-	const [mainAddress, setMainAddress] = useState('');
-	const [subAddress, setSubAddress] = useState('');
-	const [sigunguCd, setSigunguCd] = useState('');
-	const [bjdongCd, setBjdongCd] = useState('');
+	const [address, setAddress] = useState(null);
+	const [subCity, setSubCity] = useState(null);
+	const [mainAddress, setMainAddress] = useState(null);
+	const [subAddress, setSubAddress] = useState(null);
+	const [sigunguCd, setSigunguCd] = useState(null);
+	const [bjdongCd, setBjdongCd] = useState(null);
 	const [bldInfos, setBldInfos] = useState([]);
     const [isSelected, setSelected] = useState(false);
 
@@ -29,7 +29,7 @@ export default function BldInfo({setSelectedInfo}) {
 		};
 		// Axios를 사용하여 GET 요청을 보냅니다.
 		axios.get(url, { params }).then(response => {
-			console.log(response.data)
+			console.log(response)
             setSigunguCd(`${response.data.StanReginCd[1].row[0].sido_cd}${response.data.StanReginCd[1].row[0].sgg_cd}`);
             setBjdongCd(`${response.data.StanReginCd[1].row[0].umd_cd}${response.data.StanReginCd[1].row[0].ri_cd}`);
         }).catch(error => {
@@ -37,14 +37,18 @@ export default function BldInfo({setSelectedInfo}) {
         });
 	}, [subCity])
 
-	const onLoadBldInfo = useCallback(async () => {
-		setSigunguCd('')
+	const onLoadBldInfo = useCallback(() => {
+		setSigunguCd(null)
+		setBjdongCd(null)
 		setSelected(false);
-		getAddressCode();
-	},[])
+		if(subCity) {
+			getAddressCode();
+		}
+	},[address, subCity])
 
 	useEffect(()=> {
 		if(sigunguCd) {
+			console.log("!!!!!!!!!!", sigunguCd)
 			getBldInfo();
 		}
 	}, [sigunguCd])
@@ -66,11 +70,13 @@ export default function BldInfo({setSelectedInfo}) {
 		// Axios를 사용하여 GET 요청을 보냅니다.
 		axios.get(url, { params }).then(response => {
 			console.log(response.data.response.body.items)
-            if(response.data.response.body.items.item.length > 1) {
+			if(response?.data?.response?.body?.items) {
+            if(response?.data?.response?.body?.items?.item?.length > 1) {
                 setBldInfos(response.data.response.body.items.item);
             } else {
                 setBldInfos([response.data.response.body.items.item]);
             }
+		}
             setSelectedInfo(null);
         }).catch(error => {
             console.error('Error:', error);
@@ -78,7 +84,6 @@ export default function BldInfo({setSelectedInfo}) {
 	}, [sigunguCd, bjdongCd, mainAddress, subAddress])
 
 	useEffect(()=>{
-		
 		if(address) {
 			const addressParts = address.split(" ");
 			const addressParts1 = addressParts[addressParts.length-1].split("-");
@@ -88,7 +93,6 @@ export default function BldInfo({setSelectedInfo}) {
                     addressName = addressName + ' ' + address;
                 }
 		    })
-			console.log("adressarwersdf",addressName)
 		    setSubCity(addressName);
 		    setMainAddress(addressParts1[0].padStart(4, "0"));
 		    if (addressParts1.length > 1) {
@@ -102,13 +106,20 @@ export default function BldInfo({setSelectedInfo}) {
     const onSelectInfo = useCallback((info)=>{
 		setSelected(true);
 		setSelectedInfo(info);
-    })
+    }, [])
+
+	const initBldInfo = useCallback(()=>{
+		setBldInfos([]);
+    }, [])
 
 	return (
 		<div>
 			<PostcodeSearch setAddress={setAddress} />
             <div className={css.addressForm}>
-			    <button className={css.button} type='button' onClick={onLoadBldInfo}>건축물대장정보불러오기</button>
+				<div className={css.row}>
+			    	<button className={css.button} type='button' onClick={onLoadBldInfo}>건축물대장정보불러오기</button>
+					<button className={css.button} type='button' onClick={initBldInfo}>초기화</button>
+				</div>
             </div>
 			{!isSelected && bldInfos.map((b,i) => {
 				return (

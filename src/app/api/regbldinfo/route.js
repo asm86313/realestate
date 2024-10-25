@@ -13,17 +13,26 @@ export async function POST(request) {
       try {
         [bldDefaultInfoResult] = await pool.query(
           `INSERT INTO Buildings
-           (id, address, bldName, mainPurps, floor, platArea, totArea, useAprDay)
-           VALUES (null, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            bldDefaultInfo.address,
-            bldDefaultInfo.bldName,
-            bldDefaultInfo.mainPurps,
-            bldDefaultInfo.floor,
-            bldDefaultInfo.platArea,
-            bldDefaultInfo.totArea,
-            bldDefaultInfo.useAprDay,
-          ]
+          (id, address, bldName, mainPurps, floor, platArea, totArea, useAprDay)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+          address = VALUES(address),
+          bldName = VALUES(bldName),
+          mainPurps = VALUES(mainPurps),
+          floor = VALUES(floor),
+          platArea = VALUES(platArea),
+          totArea = VALUES(totArea),
+          useAprDay = VALUES(useAprDay)`,
+         [
+           bldDefaultInfo.id || null,  // id가 없으면 null 삽입
+           bldDefaultInfo.address,
+           bldDefaultInfo.bldName,
+           bldDefaultInfo.mainPurps,
+           bldDefaultInfo.floor,
+           bldDefaultInfo.platArea,
+           bldDefaultInfo.totArea,
+           bldDefaultInfo.useAprDay,
+         ]
         );
         console.log('Building inserted successfully:', bldDefaultInfoResult);
       } catch (error) {
@@ -33,22 +42,36 @@ export async function POST(request) {
 
 
     if (rentList) {
-      console.log(bldDefaultInfoResult.insertId)
+
       for (let i = 0; i < rentList.length; i++) {
         const [result] = await pool.query(
-          'INSERT INTO Contracts (id, contractDate, contractPeriod, roomNumber, name, phone, deposit, rent, vat, managementFee, bldId) VALUES (null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [
-            rentList[i].contractDate,
-            rentList[i].contractPeriod,
-            rentList[i].roomNumber,
-            rentList[i].name,
-            rentList[i].phone,
-            rentList[i].deposit,
-            rentList[i].rent,
-            rentList[i].vat,
-            rentList[i].managementFee,
-            bldDefaultInfoResult.insertId
-          ]
+          `INSERT INTO Contracts 
+          (id, contractDate, contractPeriod, roomNumber, name, phone, deposit, rent, vat, managementFee, bldId) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+          contractDate = VALUES(contractDate),
+          contractPeriod = VALUES(contractPeriod),
+          roomNumber = VALUES(roomNumber),
+          name = VALUES(name),
+          phone = VALUES(phone),
+          deposit = VALUES(deposit),
+          rent = VALUES(rent),
+          vat = VALUES(vat),
+          managementFee = VALUES(managementFee),
+          bldId = VALUES(bldId)`,
+         [
+          rentList[i].id || null,  // id가 없으면 null 삽입
+           rentList[i].contractDate,
+           rentList[i].contractPeriod,
+           rentList[i].roomNumber,
+           rentList[i].name,
+           rentList[i].phone,
+           rentList[i].deposit,
+           rentList[i].rent,
+           rentList[i].vat,
+           rentList[i].managementFee,
+           bldDefaultInfo.id || bldDefaultInfoResult.insertId,
+         ]
         );
       }
     }

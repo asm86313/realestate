@@ -92,21 +92,32 @@ export default function Rentlist({ setRentList, contractList }) {
   }, []);
 
   const onEdit = useCallback(() => {
-	setOpen(false);
-  rows[editIndex].contractDate = contractDate
-	rows[editIndex].contractPeriod = contractPeriod
-	rows[editIndex].roomNumber = roomNum
-	rows[editIndex].name = name
-	rows[editIndex].phone = phoneNum
-	rows[editIndex].deposit = deposit
-	rows[editIndex].rent = rentFee
-	rows[editIndex].vat = vat
-	rows[editIndex].managementFee = managementFee
-	setRows(
-		[...rows]
-	)
+    setOpen(false);
+    console.log('contractDate', rows[editIndex]);
+  
+    // 새로운 객체를 만들어서 업데이트
+    const updatedRows = rows.map((row, index) => {
+      if (index === editIndex) {
+        return {
+          ...row, // 기존 row의 모든 프로퍼티를 복사
+          contractDate, // 업데이트된 contractDate
+          contractPeriod, // 업데이트된 contractPeriod
+          roomNumber: roomNum, // 업데이트된 roomNumber
+          name, // 업데이트된 name
+          phone: phoneNum, // 업데이트된 phoneNum
+          deposit, // 업데이트된 deposit
+          rent: rentFee, // 업데이트된 rent
+          vat, // 업데이트된 vat
+          managementFee, // 업데이트된 managementFee
+        };
+      }
+      return row; // 수정되지 않은 row는 그대로 반환
+    });
+  
+    // 상태를 업데이트
+    setRows(updatedRows);
   }, [rows, editIndex, contractDate, contractPeriod, roomNum, name, phoneNum, deposit, rentFee, vat, managementFee]);
-
+  
   return (
     <div>
       {isOpen && (

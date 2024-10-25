@@ -6,11 +6,16 @@ import Rentlist from '@/components/rentlist/rentlist'; // 경로에 맞게 수�
 import BldInfo from '@/components/bldinfo/bldinfo'; // 경로에 맞게 수정
 import css from "./write.module.css";
 import { regBldInfo } from "@/utils/core";
-import { useSelector, useDispatch } from 'react-redux';
-import { setBuildings, buildingsState, contractsState } from "@/app/slices/storeSlice";
+import { useSelector } from 'react-redux';
+import { buildingsState, contractsState } from "@/app/slices/storeSlice";
 
 export default function Write() {
+	const router = useRouter();
+	const pathname = usePathname();
+	const bldList = useSelector(buildingsState);
+	const contractList = useSelector(contractsState);
 	const [bldDefaultInfo, setBldDefaultInfo] = useState(null);
+	const [id, setId] = useState(null);
 	const [address, setAddress] = useState('');
 	const [bldName, setBldName] = useState('');
 	const [mainPurps, setMainPurps] = useState('');
@@ -20,16 +25,14 @@ export default function Write() {
 	const [useAprDay, setUseAprDay] = useState('');
 	const [rentList, setRentList] = useState(null);
 	const [isEditMode, setEditMode] = useState(false);
-	const pathname = usePathname(); // 현재 경로 가져오기
-	const bldList = useSelector(buildingsState);
-	const contractList = useSelector(contractsState);
 
 	useEffect(() => {
 		let pathnameArray = pathname.split('/')
 		if(pathnameArray.includes('edit')) {
 			setEditMode(true);
 			bldList.map(l => {
-				if(l.id === Number(pathnameArray[pathnameArray.length - 1])) {
+				if (l.id === Number(pathnameArray[pathnameArray.length - 1])) {
+					setId(l.id)
 					setAddress(l.address)
 					setBldName(l.bldName)
 					setMainPurps(l.mainPurps)
@@ -40,15 +43,15 @@ export default function Write() {
 				}
 			})
 		}
-	  }, [bldList]);
+	}, [bldList]);
 
-	  useEffect(() => {
+	useEffect(() => {
 		let pathnameArray = pathname.split('/')
-		if(pathnameArray.includes('edit')) {
+		if (pathnameArray.includes('edit')) {
 			const _contractList = contractList.filter(l => l.bldId === Number(pathnameArray[pathnameArray.length - 1]))
 			setRentList(_contractList)
 		}
-	  }, [contractList]);
+	}, [contractList]);
 
 	useEffect(() => {
 		if(bldDefaultInfo !== null) {
@@ -69,13 +72,24 @@ export default function Write() {
 	},[rentList]);
 
 	const onSave = useCallback(() => {
-		if(isEditMode) {
-			editBldInfo(
-				{}
+		if (isEditMode) {
+			regBldInfo(
+				{
+					id,
+					address,
+					bldName,
+					mainPurps,
+					floor,
+					platArea,
+					totArea,
+					useAprDay
+				},
+				rentList
 			)
 		} else {
 			regBldInfo(
 				{
+					id : null,
 					address,
 					bldName,
 					mainPurps,
@@ -87,46 +101,59 @@ export default function Write() {
 				rentList
 			)
 		}
-
-	}, [bldDefaultInfo, rentList, isEditMode]);
+	}, [bldDefaultInfo, rentList, isEditMode, address, bldName, mainPurps, platArea, totArea, useAprDay]);
 
 	const onCancel = useCallback(() => {
-
+		router.push("/rsms");
 	}, []);
 
 	return (
-		<div>
+
+	<div className={css.cardContainer}>
+		<div className={css.card}>
 			<div className={css.addressForm}>
 				<div className={css.row}>
+					<label className={css.label}>주소</label>
 					<input className={css.textInput} type="text" value={address} placeholder="주소" onChange={(e) => setAddress(e.target.value)}/>
 				</div>
 				<div className={css.row}>
+					<label className={css.label}>건물명</label>
 					<input className={css.textInput} type="text" value={bldName} placeholder="건물명" onChange={(e) => setBldName(e.target.value)}/>
 				</div>
 				<div className={css.row}>
+					<label className={css.label}>주용도</label>
 					<input className={css.textInput} type="text" value={mainPurps} placeholder="주용도" onChange={(e) => setMainPurps(e.target.value)}/>
 				</div>
 				<div className={css.row}>
-					<input className={css.textInput} type="text" value={floor} placeholder="층수 (지하/지상)" onChange={(e) => setFloor(e.target.value)}/>
+					<label className={css.label}>{'층수(지하/지상)'}</label>
+					<input className={css.textInput} type="text" value={floor} placeholder="층수(지하/지상)" onChange={(e) => setFloor(e.target.value)}/>
 				</div>
 				<div className={css.row}>
+					<label className={css.label}>대지면적</label>
 					<input className={css.textInput} type="text" value={platArea} placeholder="대지면적" onChange={(e) => setPlatArea(e.target.value)}/>
 				</div>
 				<div className={css.row}>
+					<label className={css.label}>연면적</label>
 					<input className={css.textInput} type="text" value={totArea} placeholder="연면적" onChange={(e) => setTotArea(e.target.value)}/>
 				</div>
 				<div className={css.row}>
+					<label className={css.label}>승인일</label>
 					<input className={css.textInput} type="text" value={useAprDay} placeholder="승인일" onChange={(e) => setUseAprDay(e.target.value)}/>
 				</div>
 			</div>
+		</div>
+		<div className={css.card}>
 			<BldInfo setSelectedInfo={setBldDefaultInfo}/>
+		</div>
+		<div className={css.card}>
 			<Rentlist setRentList={setRentList} contractList={rentList}/>
-			<div className={css.addressForm}>
-				<div className={css.row}>
-					<button className={css.button} type='button' onClick={onSave}>저장</button>
-					<button className={css.button} type='button' onClick={onCancel}>취소</button>
-				</div>
+		</div>
+		<div className={css.addressForm}>
+			<div className={css.row}>
+				<button className={css.button} type='button' onClick={onSave}>저장</button>
+				<button className={css.button} type='button' onClick={onCancel}>취소</button>
 			</div>
 		</div>
+	</div>
 	);
 }

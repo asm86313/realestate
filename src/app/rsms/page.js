@@ -1,11 +1,10 @@
 "use client";
 
-import { usePathname, useSearchParams, useParams } from 'next/navigation';
 import List from "@/components/rsms/list";
 import { getBldInfo } from "@/utils/core";
-import { useSelector, useDispatch } from 'react-redux';
-import { setBuildings, setContracts, buildingsState } from "@/app/slices/storeSlice";
-import { useCallback, useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { setBuildings, setContracts } from "@/app/slices/storeSlice";
+import { useCallback, useEffect } from 'react';
 
 
 export default function page() {
@@ -25,7 +24,7 @@ export default function page() {
 
   return (
     <div>
-      <List />
+      <List/>
     </div>
   );
 }

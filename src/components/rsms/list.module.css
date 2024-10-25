@@ -1,7 +1,6 @@
 
 .addressForm {
     width: 100%;
-    max-width: 600px;
     margin: 0 auto;
     padding: 20px;
     box-sizing: border-box;
@@ -13,6 +12,7 @@
     margin-bottom: 10px;
     flex-wrap: wrap; /* 반응형 배치를 위해 줄바꿈 허용 */
   }
+
 
   .textInput {
     flex: 1;
@@ -53,3 +53,24 @@
       width: 100%; /* 작은 화면에서는 버튼이 가득 차게 */
     }
   }
+
+ 
+
+  .cardContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    padding: 20px;
+  }
+  
+  .card {
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    background-color: #fff;
+    height: 85vh;
+  }
+  

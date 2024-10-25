@@ -1,36 +1,7 @@
-/* layout.module.css */
-.header {
-    background-color: #f8f9fa;
-    padding: 20px;
-    text-align: center;
-    width: 85%;
-    margin-left: 15%;
-    height: 50vh;
-}
-
-.aside{
-    display: grid;
-    width: 15%; /* 사이드바의 너비 설정 */
-    background-color: #e0e0e0;
-    padding: 1rem;
-    position: fixed; /* 고정된 위치 설정 */
-    height: 100%; /* 전체 높이 설정 */
-    top: 0;
-    left: 0; /* 화면의 왼쪽에 고정 */
-    overflow-y: auto; /* 내용이 많을 때 스크롤 가능 */
-}
-
+/* 전체 레이아웃 */
 .main {
-    margin: 0 10% 0 25%;
-    border: 1px solid;
-    height: 100vh;
-}
-
-.footer {
-    height: 15vh;
-    width: 85%;
-    margin-left: 15%;
-    background-color: #f8f9fa;
-    padding: 10px;
-    text-align: center;
-}
+    padding: 1rem;
+    transition: margin-left 0.3s ease-in-out;
+    width: 100%;
+  }
+  

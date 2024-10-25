@@ -43,7 +43,7 @@ const PostcodeSearch = ({setAddress}) => {
 						setRoadAddress(roadAddr);
 						setJibunAddress(data.jibunAddress);
 						setExtraAddress(roadAddr !== '' ? extraRoadAddr : '');
-
+						setAddress(data.jibunAddress);
 						// 가이드 텍스트 설정
 						if (data.autoRoadAddress) {
 							const expRoadAddr = data.autoRoadAddress + extraRoadAddr;
