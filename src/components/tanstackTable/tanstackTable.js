@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getCoreRowModel, useReactTable, flexRender, getPaginationRowModel } from '@tanstack/react-table';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,8 @@ import css from './tanstackTable.module.css';
 export default function TanstackTable({bldList, onClickList}) {
 	const tansTable = (bldList, onClickList) => {
 		const [data, setData] = useState(bldList);
+		const [searchQuery, setSearchQuery] = useState('');
+
 		const columns = [
 			{
 				accessorKey: 'created_at',
@@ -67,8 +69,27 @@ export default function TanstackTable({bldList, onClickList}) {
 			setData(bldList)
 		}, [bldList]);
 
+		const onSearch = useCallback((e) =>{
+			console.log(searchQuery, data)
+		}, [searchQuery]);
+
+		const normalizeString = useCallback((str) => {
+			return str
+			  .normalize("NFC") // 문자열을 정규화 (한글 호환성 개선)
+			  .toLowerCase()     // 소문자 변환
+			  .replace(/\s+/g, ""); // 모든 공백 제거
+		  }, []);
+
+		const filteredData = useMemo(() => {
+			return data?.filter((item) =>
+				normalizeString(item.bldName).includes(searchQuery.toLowerCase()) ||
+				normalizeString(item.address).includes(searchQuery.toLowerCase()) ||
+				normalizeString(item.mainPurps).includes(searchQuery.toLowerCase())
+			);
+		  }, [searchQuery, data]);
+
 		const table = useReactTable({
-			data,
+			data : filteredData.length > 0 ? filteredData : data,
 			columns,
 			getCoreRowModel: getCoreRowModel(),
 			initialState: {
@@ -80,7 +101,6 @@ export default function TanstackTable({bldList, onClickList}) {
 		});
 
 		const onChanged = useCallback((e) =>{
-			console.log(e)
 			table.setPageSize(e)
 		}, [table]);
 
@@ -88,8 +108,8 @@ export default function TanstackTable({bldList, onClickList}) {
 			<>
 			<div className="flex justify-between">
 				<div className="flex w-full max-w-sm items-center space-x-2 pl-6">
-					<Input type="email" placeholder="검색" />
-					<Button type="submit">검색</Button>
+					<Input type="search" placeholder="검색" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}/>
+					<Button type="button" onClick={onSearch}>검색</Button>
 				</div>
 				<div className="text-right pr-6">
 					<Select
@@ -149,11 +169,9 @@ export default function TanstackTable({bldList, onClickList}) {
 					>
 						{'‹'}
 					</button>
-
 					<div className="text-base font-bold">
 					{`${table.getState().pagination.pageIndex + 1} / ${table.getPageCount()}`}
 					</div>
-
 					<button
 						disabled={!table.getCanNextPage()}
 						onClick={() => table.nextPage()}
