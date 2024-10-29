@@ -1,0 +1,22 @@
+.header{
+  display: flex;
+  justify-content: center;
+  padding-top: 2rem;
+}
+
+.icon{
+  margin-right: 2rem;
+}
+
+.icon:hover{
+  cursor: pointer;
+}
+
+.title{
+  width: 48px;
+  text-align: center;
+}
+
+.title:hover{
+  cursor: pointer;
+}

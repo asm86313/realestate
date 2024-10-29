@@ -5,6 +5,7 @@ export const storeSlice = createSlice({
   initialState: {
     buildings: [], // 초기 상태
     contracts: [],
+    schedule: [],
   },
 
   reducers: {
@@ -14,14 +15,18 @@ export const storeSlice = createSlice({
     setContracts: (state, action) => {
       state.contracts = action.payload
     },
+    setSchedule: (state, action) => {
+      state.schedule = action.payload
+    },
   },
 });
 
 // 액션 생성자 내보내기
-export const { setBuildings, setContracts } = storeSlice.actions;
+export const { setBuildings, setContracts, setSchedule } = storeSlice.actions;
 
 // 선택자 내보내기
 export const buildingsState = (state) => state.storeSlice.buildings;
 export const contractsState = (state) => state.storeSlice.contracts;
+export const scheduleState = (state) => state.storeSlice.schedule;
 
 export default storeSlice.reducer;

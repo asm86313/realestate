@@ -4,6 +4,8 @@ import localFont from "next/font/local";
 import css from "./layout.module.css";
 import AppSidebar from '@/components/appSidebar/appSidebar'; // 클라이언트 컴포넌트 불러오기
 import { SidebarProvider } from '@/components/ui/sidebar';
+import AppHeader from "@/components/appHeader/appHeader";
+
 const geistSans = localFont({
 	src: "./fonts/GeistVF.woff",
 	variable: "--font-geist-sans",
@@ -25,14 +27,29 @@ export default function RootLayout({ children }) {
 	return (
 		<html>
 			<body>
-			<SidebarProvider>
-				<AppSidebar/>
-				<main className={css.main}>
-					<ClientLayout>
-						{children}
-					</ClientLayout>
-				</main>
-				</SidebarProvider>
+				<header>
+					<AppHeader/>
+				</header>
+				{/* <SidebarProvider> */}
+				{/* <AppSidebar/> */}
+					<main className={css.main}>
+						<div className={css.mainLayout}>
+							<div className={css.cardContainer}>
+								<div className={css.card}>왼쪽 배너</div>
+							</div>
+							<div className={css.mainContainer}>
+							<div className={css.card}>
+								<ClientLayout>
+									{children}
+								</ClientLayout>
+								</div>
+							</div>
+							<div className={css.cardContainer}>
+								<div className={css.card}>오른쪽 배너</div>
+							</div>
+						</div>
+					</main>
+				{/* </SidebarProvider> */}
 			</body>
 		</html>
 	);

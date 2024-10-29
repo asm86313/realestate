@@ -8,6 +8,7 @@ import css from "./write.module.css";
 import { regBldInfo } from "@/utils/core";
 import { useSelector } from 'react-redux';
 import { buildingsState, contractsState } from "@/app/slices/storeSlice";
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function Write() {
 	const router = useRouter();
@@ -108,52 +109,53 @@ export default function Write() {
 	}, []);
 
 	return (
-
-	<div className={css.cardContainer}>
-		<div className={css.card}>
+	<ScrollArea className="h-[80vh] w-[100%] rounded-md pb-5">
+		<div className={css.cardContainer}>
+			<div className={css.card}>
+				<div className={css.addressForm}>
+					<div className={css.row}>
+						<label className={css.label}>주소</label>
+						<input className={css.textInput} type="text" value={address} placeholder="주소" onChange={(e) => setAddress(e.target.value)}/>
+					</div>
+					<div className={css.row}>
+						<label className={css.label}>건물명</label>
+						<input className={css.textInput} type="text" value={bldName} placeholder="건물명" onChange={(e) => setBldName(e.target.value)}/>
+					</div>
+					<div className={css.row}>
+						<label className={css.label}>주용도</label>
+						<input className={css.textInput} type="text" value={mainPurps} placeholder="주용도" onChange={(e) => setMainPurps(e.target.value)}/>
+					</div>
+					<div className={css.row}>
+						<label className={css.label}>{'층수(지하/지상)'}</label>
+						<input className={css.textInput} type="text" value={floor} placeholder="층수(지하/지상)" onChange={(e) => setFloor(e.target.value)}/>
+					</div>
+					<div className={css.row}>
+						<label className={css.label}>대지면적</label>
+						<input className={css.textInput} type="text" value={platArea} placeholder="대지면적" onChange={(e) => setPlatArea(e.target.value)}/>
+					</div>
+					<div className={css.row}>
+						<label className={css.label}>연면적</label>
+						<input className={css.textInput} type="text" value={totArea} placeholder="연면적" onChange={(e) => setTotArea(e.target.value)}/>
+					</div>
+					<div className={css.row}>
+						<label className={css.label}>승인일</label>
+						<input className={css.textInput} type="text" value={useAprDay} placeholder="승인일" onChange={(e) => setUseAprDay(e.target.value)}/>
+					</div>
+				</div>
+			</div>
+			<div className={css.card}>
+				<BldInfo setSelectedInfo={setBldDefaultInfo}/>
+			</div>
+			<div className={css.card}>
+				<Rentlist setRentList={setRentList} contractList={rentList}/>
+			</div>
 			<div className={css.addressForm}>
 				<div className={css.row}>
-					<label className={css.label}>주소</label>
-					<input className={css.textInput} type="text" value={address} placeholder="주소" onChange={(e) => setAddress(e.target.value)}/>
-				</div>
-				<div className={css.row}>
-					<label className={css.label}>건물명</label>
-					<input className={css.textInput} type="text" value={bldName} placeholder="건물명" onChange={(e) => setBldName(e.target.value)}/>
-				</div>
-				<div className={css.row}>
-					<label className={css.label}>주용도</label>
-					<input className={css.textInput} type="text" value={mainPurps} placeholder="주용도" onChange={(e) => setMainPurps(e.target.value)}/>
-				</div>
-				<div className={css.row}>
-					<label className={css.label}>{'층수(지하/지상)'}</label>
-					<input className={css.textInput} type="text" value={floor} placeholder="층수(지하/지상)" onChange={(e) => setFloor(e.target.value)}/>
-				</div>
-				<div className={css.row}>
-					<label className={css.label}>대지면적</label>
-					<input className={css.textInput} type="text" value={platArea} placeholder="대지면적" onChange={(e) => setPlatArea(e.target.value)}/>
-				</div>
-				<div className={css.row}>
-					<label className={css.label}>연면적</label>
-					<input className={css.textInput} type="text" value={totArea} placeholder="연면적" onChange={(e) => setTotArea(e.target.value)}/>
-				</div>
-				<div className={css.row}>
-					<label className={css.label}>승인일</label>
-					<input className={css.textInput} type="text" value={useAprDay} placeholder="승인일" onChange={(e) => setUseAprDay(e.target.value)}/>
+					<button className={css.button} type='button' onClick={onSave}>저장</button>
+					<button className={css.button} type='button' onClick={onCancel}>취소</button>
 				</div>
 			</div>
 		</div>
-		<div className={css.card}>
-			<BldInfo setSelectedInfo={setBldDefaultInfo}/>
-		</div>
-		<div className={css.card}>
-			<Rentlist setRentList={setRentList} contractList={rentList}/>
-		</div>
-		<div className={css.addressForm}>
-			<div className={css.row}>
-				<button className={css.button} type='button' onClick={onSave}>저장</button>
-				<button className={css.button} type='button' onClick={onCancel}>취소</button>
-			</div>
-		</div>
-	</div>
+	</ScrollArea>
 	);
 }

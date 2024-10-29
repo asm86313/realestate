@@ -1,7 +1,39 @@
 /* 전체 레이아웃 */
 .main {
-    padding: 1rem;
-    transition: margin-left 0.3s ease-in-out;
-    width: 100%;
-  }
-  
+	padding: 1rem 1rem 1rem 1rem;
+	transition: margin-left 0.3s ease-in-out;
+	width: 100%;
+}
+
+.mainLayout{
+	display: flex;
+	max-height: 85vh;
+}
+
+.cardContainer {
+	width: 20%;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	justify-content: center;
+	padding: 10px;
+	height: 85vh;
+	position: sticky;
+	top: 0;
+	overflow-y: auto;
+}
+
+.mainContainer{
+	width: 60%;
+	padding: 10px;
+}
+
+.card {
+	width: 100%;
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	padding: 16px;
+	background-color: #fff;
+	height: 100%;
+}

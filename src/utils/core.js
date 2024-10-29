@@ -2,10 +2,6 @@
 import axios from 'axios';
 
 export const regBldInfo = async (bldDefaultInfo, rentList) => {
-    console.log(bldDefaultInfo, rentList)
-    // let _bldDefaultInfo = JSON.stringify(bldDefaultInfo)
-    // let _rentList = JSON.stringify(rentList)
-    
     try {
         const res = await axios.post('http://localhost:3000/api/regbldinfo', {
             bldDefaultInfo,
@@ -32,3 +28,40 @@ export const getBldInfo = async() => {
     }
 };
 
+export const setSchedule = async (schedule) => {
+    try {
+        const res = await axios.post('http://localhost:3000/api/setSchedule', {
+            schedule
+        });
+
+        if (res.status === 200) {
+
+        }
+    } catch (error) {
+
+    }
+};
+
+export const getSchedule = async() => {
+    try {
+        const res = await axios.get('http://localhost:3000/api/getSchedule');
+
+        if (res.status === 200) {
+            return res
+        }
+    } catch (error) {
+
+    }
+};
+
+export const deleteSchedule = async(id) => {
+    try {
+        const res = await axios.delete('http://localhost:3000/api/setSchedule', {data: { id: id.id }})
+
+        if (res.status === 200) {
+            return res
+        }
+    } catch (error) {
+
+    }
+};

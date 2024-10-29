@@ -17,16 +17,14 @@ export default function List() {
 
 
 	const onClickList = useCallback((cell)=> {
-	router.push(`/rsms/edit/${cell.row.original.id}`);
+		router.push(`/rsms/edit/${cell.row.original.id}`);
 	}, [])
 
 	return (
 		<div className={css.cardContainer}>
-				<div className={css.card}>
-					{bldList.length > 0 &&
-						<TanstackTable bldList={bldList} onClickList={onClickList}/>
-					}
-				</div>
+			{bldList.length > 0 &&
+				<TanstackTable bldList={bldList} onClickList={onClickList}/>
+			}
 			<div className={css.addressForm}>
 				<div className={css.row}>
 					<button className={css.button} type="button" onClick={handleButtonClick}>{'등록'}</button>

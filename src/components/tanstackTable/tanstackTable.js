@@ -15,7 +15,7 @@ export default function TanstackTable({bldList, onClickList}) {
 
 		const columns = [
 			{
-				accessorKey: 'created_at',
+				accessorKey: 'id',
 				header: '순번',
 				cell: (props) => <p>{props.row.index + 1}</p>,
 				size: 80,
@@ -107,11 +107,11 @@ export default function TanstackTable({bldList, onClickList}) {
 		return (
 			<>
 			<div className="flex justify-between">
-				<div className="flex w-full max-w-sm items-center space-x-2 pl-6">
+				<div className="flex w-full max-w-sm items-center space-x-2">
 					<Input type="search" placeholder="검색" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}/>
 					<Button type="button" onClick={onSearch}>검색</Button>
 				</div>
-				<div className="text-right pr-6">
+				<div className="text-right">
 					<Select
 							value={table.getState().pagination.pageSize}
 							onValueChange={onChanged}
