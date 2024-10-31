@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import pool from '../../../lib/db';
 
 export async function POST(request) {
 
   const { bldDefaultInfo, rentList } = await request.json();
-  console.log(bldDefaultInfo, rentList)
+
   let bldDefaultInfoResult = null;
   try {
     // SQL 쿼리 실행 - 데이터 저장
@@ -34,18 +33,16 @@ export async function POST(request) {
            bldDefaultInfo.useAprDay,
          ]
         );
-        console.log('Building inserted successfully:', bldDefaultInfoResult);
       } catch (error) {
         console.error('Error inserting building:', error);
       }
     }
 
-
     if (rentList) {
 
       for (let i = 0; i < rentList.length; i++) {
         const [result] = await pool.query(
-          `INSERT INTO Contracts 
+          `INSERT INTO Contracts
           (id, contractDate, contractPeriod, roomNumber, name, phone, deposit, rent, vat, managementFee, bldId) 
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE

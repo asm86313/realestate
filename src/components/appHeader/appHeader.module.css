@@ -1,22 +1,37 @@
-.header{
-  display: flex;
-  justify-content: center;
-  padding-top: 2rem;
+.header {
+	display: flex;
+	justify-content: center;
+	padding-top: 2rem;
 }
 
-.icon{
-  margin-right: 2rem;
+.content {
+	display: flex;
+	margin: 0 auto;
 }
 
-.icon:hover{
-  cursor: pointer;
+.content1 {
+	display: flex;
+	position: relative;
+	margin-right: 1rem;
 }
 
-.title{
-  width: 48px;
-  text-align: center;
+.icon {
+	margin-right: 2rem;
 }
 
-.title:hover{
-  cursor: pointer;
+.icon:hover {
+	cursor: pointer;
+}
+
+.title {
+	width: 48px;
+	text-align: center;
+}
+
+.title:hover {
+	cursor: pointer;
+}
+
+.label {
+	font-weight: bold;
 }
