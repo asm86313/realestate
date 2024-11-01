@@ -30,13 +30,22 @@ async function hashPassword(password) {
 
 export async function GET(request) {
 
-	const [result1] = await pool.query('SELECT * FROM users');
+	try {
+		// 세션 확인: 쿠키에서 사용자 세션 정보 가져오기
+		const cookies = request.cookies;
+		const userSession = cookies.get('userData'); // 세션 이름에 맞춰 조정 필요
 
-	setTimeout(() => {
-		console.log('resulet get', result1)
+		if (!userSession) {
+		  // 세션이 없다면 로그인 상태가 아니므로 401 응답 반환
+		  return new NextResponse(JSON.stringify({ message: 'Not logged in' }), { status: 401 });
+		}
+		// 유효한 세션이면 사용자 정보를 반환
+		return new Response(JSON.stringify({ message: 'Login successful', user: userSession }), { status: 200 });
 
-	}, 1000);
-	return new Response(JSON.stringify({ message: 'Login successful' }), { status: 200 });
+	  } catch (error) {
+		console.error('Error fetching session:', error);
+		return new Response(JSON.stringify({ message: 'Error fetching session' }), { status: 500 });
+	  }
 }
 
 export async function POST(request) {

@@ -82,6 +82,19 @@ export const login = async (userId, password) => {
     }
   };
 
+  export const getUser = async () => {
+    try {
+        // axios로 서버에 로그인 요청
+        const res = await axios.get('http://localhost:3000/api/login');
+
+        if (res.status === 200) {
+            return res
+        }
+    } catch (error) {
+        // 오류가 발생했을 때 메시지 설정
+    }
+  };
+
 export const logout = async () => {
     await fetch('http://localhost:3000/api/logout', {
         method: 'POST',

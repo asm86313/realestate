@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 
 import { Button } from "@/components/ui/button"
 
-import { login, signup, logout } from "@/utils/core";
+import { login, signup, logout, getUser } from "@/utils/core";
 
 import css from "./appHeader.module.css";
 
@@ -31,7 +31,11 @@ export const loginForm = (dispatch) => {
 	const onClickLogin = useCallback(async ()=> {
 		let res = await login(userId, userPassword)
 		if (res) {
-			dispatch(setUserData(res.data.user))
+			// let userData = await getUser();
+			// if (userData) {
+			// 	console.log(userData)
+			// 	dispatch(userData.data.user)
+			// }
 			setOpen(false);
 		}
 	}, [userId, userPassword]);
@@ -59,6 +63,14 @@ export const loginForm = (dispatch) => {
 	useEffect(()=> {
 		initUserInfo();
 	}, [isRegMode]);
+
+	// useEffect(async ()=> {
+	// 	let res = await getUser()
+	// 	if (res) {
+	// 		dispatch(res.data.user)
+	// 		console.log(res)
+	// 	}
+	// }, []);
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
