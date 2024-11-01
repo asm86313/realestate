@@ -75,16 +75,10 @@ export const login = async (userId, password) => {
         });
 
         if (res.status === 200) {
-            // 로그인 성공 시 대시보드로 리디렉션
-            window.location.href = '/';
+            return res
         }
     } catch (error) {
         // 오류가 발생했을 때 메시지 설정
-        if (error.response && error.response.data) {
-            setErrorMessage(error.response.data.message || 'Invalid credentials');
-        } else {
-            setErrorMessage('An error occurred. Please try again.');
-        }
     }
   };
 
@@ -92,19 +86,19 @@ export const logout = async () => {
     await fetch('http://localhost:3000/api/logout', {
         method: 'POST',
     });
-    window.location.href = '/';  // 로그아웃 후 로그인 페이지로 이동
+    window.location.href = '/';
   };
 
-export const signup = async (userId, password, userName) => {
+export const signup = async (userId, userName, email, password) => {
     try {
       const res = await axios.post('http://localhost:3000/api/signup', {
         userId,
         password,
         userName,
+        email
       });
 
       if (res.status === 200) {
-
       }
     } catch (error) {
     }

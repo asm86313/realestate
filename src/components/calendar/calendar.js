@@ -3,14 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
+/* redux */
 import { setSchedule, deleteSchedule } from '@/utils/core';
 import { scheduleState } from "@/app/slices/storeSlice";
-import { Button } from "@/components/ui/button"
 
 /* shadcn 플러그인 */
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 
 /* dayjs 플러그인 */
 import dayjs from 'dayjs';
@@ -136,6 +137,21 @@ export default function Calendar({getScheduleList}) {
 		}
 	  }, [event]);
 
+	const onEventDrop = useCallback((e)=>{
+		const { id, start, end, title:description, extendedProps } = e.event;
+		const startDate = dayjs(start).format('YYYY-MM-DDTHH:mm');
+		const endDate = dayjs(end).format('YYYY-MM-DDTHH:mm');
+		setSchedule({
+			id: id,
+			description: description,
+			start: startDate,
+			end: endDate,
+			notes: extendedProps.notes,
+			allday: true,
+			rept: 0
+		});
+	}, [])
+
 	return (
 		<>
 			<div className={css.calendarContainer} style={{  margin:15, display:'grid', gridTemplateColumns:"2fr 1fr"}}>
@@ -145,9 +161,9 @@ export default function Calendar({getScheduleList}) {
 					locale={koLocale}
 					headerToolbar={
 						{
-							start: 'prevYear,prev,next,nextYear,today',
+							start: 'prevYear,prev',
 							center: 'title',
-							end: 'addEventButton dayGridMonth,dayGridWeek,listMonth'
+							end: 'next,nextYear today addEventButton dayGridMonth,dayGridWeek,listMonth'
 							// end: 'addEventButton dayGridMonth,dayGridWeek,dayGridDay,listMonth'
 						}
 					}
@@ -158,11 +174,14 @@ export default function Calendar({getScheduleList}) {
 					dateClick={onAddEvent}
 					eventClick={onEditEvent}
 					events={event}
-					  customButtons={{
-						addEventButton: {
-							text: '일정추가',
-							click: () => onAddEvent(),
-						},}}
+					customButtons={{
+							addEventButton: {
+								text: '일정추가',
+								click: () => onAddEvent(),
+							}
+						}
+					}
+					eventDrop={onEventDrop}
 				/>
 			</div>
 			<Sheet open={isOpen} onOpenChange={setIsOpen}>

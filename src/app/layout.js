@@ -27,8 +27,10 @@ export default function RootLayout({ children }) {
 	return (
 		<html>
 			<body>
-				<header>
-					<AppHeader/>
+				<header className={css.header}>
+					<ClientLayout>
+						<AppHeader/>
+					</ClientLayout>
 				</header>
 				{/* <SidebarProvider> */}
 				{/* <AppSidebar/> */}

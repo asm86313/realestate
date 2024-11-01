@@ -1,0 +1,16 @@
+.wrap{
+	position: absolute;
+	width: 57.2%;
+	margin-top: -25px ;
+	margin-left: -10px ;
+	background-color: black;
+	height: 81.2%;
+	z-index: 10;
+	border-radius: 10px;
+	opacity: 0.9;
+	color: white;
+	display: flex;
+	justify-content: center;
+    align-items: center;
+	font-size: 4rem;
+}

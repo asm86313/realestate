@@ -1,22 +1,35 @@
 .header {
 	display: flex;
 	justify-content: center;
-	padding-top: 2rem;
+	align-items: center;
 }
 
-.content {
+.contentLeft {
 	display: flex;
-	margin: 0 auto;
+	width: 20%;
+	justify-content: start;
+	padding-left: 1rem;
 }
 
-.content1 {
+.contentCenter {
 	display: flex;
-	position: relative;
-	margin-right: 1rem;
+	width: 60%;
+	justify-content: center;
+}
+
+.contentRight {
+	display: flex;
+	width: 20%;
+	justify-content: end;
+	padding-right: 1rem;
+}
+
+.iconWrap {
+	min-width: 48px;
 }
 
 .icon {
-	margin-right: 2rem;
+	margin-right: 0rem;
 }
 
 .icon:hover {
@@ -24,7 +37,6 @@
 }
 
 .title {
-	width: 48px;
 	text-align: center;
 }
 
