@@ -17,6 +17,11 @@ export const cityFullName = [
     {value: '제주', title: '제주도'}
 ]
 
+export const depositStatus = [
+    {value: 'deposit', title: '입금'},
+    {value: 'Withdrawal', title: '출금'},
+]
+
 export const dataBaseUrl = process.env.NEXT_PUBLIC_DATA_BASE_URL;
 export const dataServicekey = process.env.NEXT_PUBLIC_DATA_SERVICE_KEY;
 

@@ -3,9 +3,8 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect, useState } from 'react';
 
-import { setSchedule } from "@/app/slices/storeSlice";
-import { getSchedule } from "@/utils/core";
-import { userData } from "@/app/slices/storeSlice";
+import { setSchedule, setBuildings, setContracts, userData } from "@/app/slices/storeSlice";
+import { getSchedule, getBldInfo } from "@/utils/core";
 
 import { Toaster } from "sonner";
 
@@ -23,17 +22,21 @@ export default function page() {
 	  	}
 	}, [])
 
+	const getBldList = useCallback(async() => {
+		const res = await getBldInfo();
+		if(res) {
+		  dispatch(setBuildings(res.data.Buildings))
+		  dispatch(setContracts(res.data.Contracts))
+		}
+	  }, [])
+
 	useEffect(() => {
 		getScheduleList();
+		getBldList();
 	}, [])
 
 	return (
 		<div>
-			{!user &&
-				<div className={css.wrap}>
-					로그인 후 사용 가능 합니다.
-				</div>
-			}
 			<Calendar getScheduleList={getScheduleList}/>
 			<Toaster position="top-right" richColors /> {/* Toast Provider */}
 		</div>

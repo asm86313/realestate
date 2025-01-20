@@ -6,8 +6,6 @@
     justify-content: center;
 }
 
-
-
 .cardContainer {
     width: 100%;
     display: inline-block;
@@ -32,6 +30,14 @@ background-color: #fff;
     margin: 0 auto;
     padding: 20px;
     box-sizing: border-box;
+}
+
+.checkRow {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    justify-content: space-between;
+    flex-wrap: wrap; /* 반응형 배치를 위해 줄바꿈 허용 */
 }
 
 .row {

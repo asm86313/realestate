@@ -1,11 +1,7 @@
 
-.tableWrap {
-  height: 100%;
-}
-
-
-.addressForm {
+.form {
     width: 100%;
+    max-width: 600px;
     margin: 0 auto;
     padding: 20px;
     box-sizing: border-box;
@@ -17,7 +13,6 @@
     margin-bottom: 10px;
     flex-wrap: wrap; /* 반응형 배치를 위해 줄바꿈 허용 */
   }
-
 
   .textInput {
     flex: 1;
@@ -37,6 +32,7 @@
     border-radius: 4px;
     transition: background-color 0.3s ease;
     flex-shrink: 0; /* 버튼이 작아지지 않도록 설정 */
+    margin-right: 0.5rem;
   }
 
   .button:hover {
@@ -59,21 +55,83 @@
     }
   }
 
-  .cardContainer {
+  .modalBackdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal {
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    max-width: 400px;
     width: 100%;
-    display: inline-block;
+  }
+
+  .modal h2 {
+    margin-top: 0;
+  }
+
+  .modal form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal form div {
+    margin-bottom: 10px;
+  }
+
+  .cardContainer {
+    display: flex;
     flex-wrap: wrap;
     gap: 16px;
     justify-content: center;
     padding: 20px;
+    width: 100%;
   }
 
   .card {
-    width: 100%;
+    width: 300px;
     border: 1px solid #ddd;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     padding: 16px;
     background-color: #fff;
-    height: 85vh;
+    font-size: 0.875rem;
   }
+  .card:hover {
+    background-color: #928c8c4b;
+    cursor: pointer;
+  }
+
+  .cardTitle {
+    font-size: 1.25rem;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+
+  .card p {
+    margin: 4px 0;
+  }
+
+  .button {
+    margin-top: 16px;
+    padding: 10px 20px;
+    border: none;
+    background-color: #4caf50;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .button:hover {
+    background-color: #45a049;
+  }
+

@@ -46,9 +46,6 @@ export default function RootLayout({ children }) {
 								</ClientLayout>
 								</div>
 							</div>
-							<div className={css.cardContainer}>
-								<div className={css.card}>오른쪽 배너</div>
-							</div>
 						</div>
 					</main>
 				{/* </SidebarProvider> */}

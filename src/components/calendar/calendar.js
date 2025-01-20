@@ -5,13 +5,17 @@ import { useSelector } from "react-redux";
 
 /* redux */
 import { setSchedule, deleteSchedule } from '@/utils/core';
-import { scheduleState } from "@/app/slices/storeSlice";
+import { scheduleState, buildingsState } from "@/app/slices/storeSlice";
 
 /* shadcn 플러그인 */
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Select, SelectGroup, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectLabel } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+
+import { depositStatus } from '@/utils/constants';
 
 /* dayjs 플러그인 */
 import dayjs from 'dayjs';
@@ -24,13 +28,17 @@ import FullCalendar from '@fullcalendar/react';
 import listPlugin from "@fullcalendar/list";
 import koLocale from '@fullcalendar/core/locales/ko';
 
+
+
 import css from "./calendar.module.css";
 
 export default function Calendar({getScheduleList}) {
 	const scheduleList = useSelector(scheduleState);
+	const bldList = useSelector(buildingsState);
 
 	const [isOpen, setIsOpen] = useState(false);
 	const [event, setEvent] = useState([]);
+	const [myBldList, setMyBldList] = useState([]);
 	const [id, setId] = useState(null);
 	const [description, setDescription] = useState('');
 	const [startDate, setStartDate] = useState('');
@@ -38,6 +46,8 @@ export default function Calendar({getScheduleList}) {
 	const [notes, setNotes] = useState('');
 	const [repeat, setRepeat] = useState(0);
 	const [isMounted, setMounted] = useState(true);
+	const [isInterest, setInterest] = useState(false);
+	
 
 	const onAddEvent = useCallback((info)=>{
 		setId(null)
@@ -57,6 +67,14 @@ export default function Calendar({getScheduleList}) {
 	useEffect(()=> {
 		setEvent(scheduleList)
 	}, [scheduleList])
+
+	useEffect(()=> {
+console.log('isInterest', isInterest)
+	}, [isInterest])
+
+	useEffect(()=> {
+		setMyBldList(bldList)
+	}, [bldList])
 
 	const onEditEvent = useCallback((info)=>{
 		console.log(info.event)
@@ -194,9 +212,57 @@ export default function Calendar({getScheduleList}) {
 						</SheetDescription>
 					</SheetHeader>
 						<div className={css.addressForm}>
+						<div className={css.row}>
+							<label className={css.label}>건물 구분</label>
+								<Select>
+									<SelectTrigger className="w-[300px]">
+										<SelectValue placeholder="건물 구분" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectGroup>
+										{myBldList.map(list => {
+											return <SelectItem value={list.id} key={list.address + list.id}>{`${list.address}`}</SelectItem>
+										})}
+										</SelectGroup>
+									</SelectContent>
+								</Select>
+							</div>
 							<div className={css.row}>
 								<label className={css.label}>내용</label>
 								<input className={css.textInput} type="text" value={description} placeholder="일정을 입력하세요" onChange={(e) => setDescription(e.target.value)}/>
+							</div>
+							<div className={css.row}>
+							<label className={css.label}>입출금 구분</label>
+								<Select>
+									<SelectTrigger className="w-[300px]">
+										<SelectValue placeholder="입출금 구분" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectGroup>
+										{depositStatus.map(list => {
+											return <SelectItem value={list.value} key={list.title}>{list.title}</SelectItem>
+										})}
+										</SelectGroup>
+									</SelectContent>
+								</Select>
+							</div>
+							<div className={css.row}>
+								<label className={css.label}>입금자</label>
+								<input className={css.textInput} type="text" value={description} placeholder="대상을 입력하세요" onChange={(e) => setDescription(e.target.value)}/>
+							</div>
+							<div className={css.row}>
+								<label className={css.label}>금액</label>
+								<input className={css.textInput} type="number" value={description} placeholder="금액을 입력하세요" onChange={(e) => setDescription(e.target.value)}/>
+							</div>
+							<div className={css.checkRow}>
+								<label className={css.label}>이자 여부</label>
+								<div className="flex items-center space-x-2">
+									<Checkbox id="terms" value={isInterest} onCheckedChange={(e) => setInterest(!isInterest)}/>
+								</div>
+							</div>
+							<div className={css.row}>
+								<label className={css.label}>금리</label>
+								<input className={css.textInput} disabled={!isInterest} type="number" value={description} placeholder="금리를 입력하세요" onChange={(e) => setDescription(e.target.value)}/>
 							</div>
 							<div className={css.row}>
 								<label className={css.label}>시작일</label>
@@ -206,12 +272,12 @@ export default function Calendar({getScheduleList}) {
 								<label className={css.label}>종료일</label>
 								<input className={css.textInput} type="datetime-local" value={endDate} placeholder="종료일" onChange={(e) => setEndDate(e.target.value)}/>
 							</div>
-							{!id &&
+							{/* {!id &&
 								<div className={css.row}>
 									<label className={css.label}>{`반복(개월)`}</label>
 									<input className={css.textInput} type="text" value={repeat} placeholder="반복(개월)" onChange={(e) => setRepeat(e.target.value)}/>
 								</div>
-							}
+							} */}
 							<div className={css.row}>
 							<label className={css.label}>{`비고`}</label>
 								<Textarea className='h-[200px]' value={notes} onChange={(e) => setNotes(e.target.value)}/>

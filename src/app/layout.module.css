@@ -12,7 +12,7 @@
 
 .mainLayout{
 	display: flex;
-	max-height: 85vh;
+	max-height: 90vh;
 }
 
 .cardContainer {
@@ -22,14 +22,14 @@
 	gap: 16px;
 	justify-content: center;
 	padding: 10px;
-	height: 85vh;
+	height: 90vh;
 	position: sticky;
 	top: 0;
 	overflow-y: auto;
 }
 
 .mainContainer{
-	width: 60%;
+	width: 80%;
 	padding: 10px;
 }
 

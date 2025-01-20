@@ -1,6 +1,23 @@
 
 import axios from 'axios';
 
+export let recentWinningNumber = [];
+
+export const getRecentlyWinningNumber = async (drwNo, cnt) => {
+    recentWinningNumber = [];
+    try {
+        for (let i = drwNo; i > (drwNo-cnt); i--) {
+            const res = await axios.get(`https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=${i}`);
+            if (res.status === 200) {
+                recentWinningNumber.push(res.data)
+            }
+        }
+        return recentWinningNumber
+    } catch (error) {
+
+    }
+}
+
 export const regBldInfo = async (bldDefaultInfo, rentList) => {
     try {
         const res = await axios.post('http://localhost:3000/api/regbldinfo', {
