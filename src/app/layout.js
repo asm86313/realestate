@@ -36,9 +36,6 @@ export default function RootLayout({ children }) {
 				{/* <AppSidebar/> */}
 					<main className={css.main}>
 						<div className={css.mainLayout}>
-							<div className={css.cardContainer}>
-								<div className={css.card}>왼쪽 배너</div>
-							</div>
 							<div className={css.mainContainer}>
 							<div className={css.card}>
 								<ClientLayout>

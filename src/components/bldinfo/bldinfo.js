@@ -2,10 +2,10 @@
 
 import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
-import PostcodeSearch from '@/components/postcode/postcode';
-import css from './bldinfo.module.css';
 import { dataBaseUrl, dataServicekey } from "@/utils/constants";
+import PostcodeSearch from '@/components/postcode/postcode';
 
+import css from './bldinfo.module.css';
 
 export default function BldInfo({setSelectedInfo}) {
 
@@ -44,17 +44,10 @@ export default function BldInfo({setSelectedInfo}) {
 		if(subCity) {
 			getAddressCode();
 		}
-	},[address, subCity])
-
-	useEffect(()=> {
-		if(sigunguCd) {
-			console.log("!!!!!!!!!!", sigunguCd)
-			getBldInfo();
-		}
-	}, [sigunguCd])
+	},[subCity, getAddressCode])
 
 	const getBldInfo = useCallback(() => {
-		const url = `${dataBaseUrl}/1613000/BldRgstService_v2/getBrTitleInfo`; // URL
+		const url = `${dataBaseUrl}/1613000/BldRgstHubService/getBrTitleInfo`;
 		const params = {
 			serviceKey: dataServicekey,
 			sigunguCd: sigunguCd,
@@ -69,19 +62,29 @@ export default function BldInfo({setSelectedInfo}) {
 		};
 		// Axios를 사용하여 GET 요청을 보냅니다.
 		axios.get(url, { params }).then(response => {
-			console.log(response.data.response.body.items)
-			if(response?.data?.response?.body?.items) {
-            if(response?.data?.response?.body?.items?.item?.length > 1) {
-                setBldInfos(response.data.response.body.items.item);
-            } else {
-                setBldInfos([response.data.response.body.items.item]);
-            }
-		}
+			if (response?.data?.body?.items) {
+				setBldInfos(response.data.body.items.item);
+			}
             setSelectedInfo(null);
         }).catch(error => {
             console.error('Error:', error);
         });
-	}, [sigunguCd, bjdongCd, mainAddress, subAddress])
+	}, [sigunguCd, bjdongCd, mainAddress, subAddress, setSelectedInfo])
+
+    const onSelectInfo = useCallback((info)=>{
+		setSelected(true);
+		setSelectedInfo(info);
+    }, [setSelectedInfo])
+
+	const initBldInfo = useCallback(()=>{
+		setBldInfos([]);
+    }, [setBldInfos])
+
+	useEffect(()=> {
+		if(sigunguCd) {
+			getBldInfo();
+		}
+	}, [sigunguCd, getBldInfo])
 
 	useEffect(()=>{
 		if(address) {
@@ -103,15 +106,6 @@ export default function BldInfo({setSelectedInfo}) {
 	    }
 	}, [address])
 
-    const onSelectInfo = useCallback((info)=>{
-		setSelected(true);
-		setSelectedInfo(info);
-    }, [])
-
-	const initBldInfo = useCallback(()=>{
-		setBldInfos([]);
-    }, [])
-
 	return (
 		<div>
 			<PostcodeSearch setAddress={setAddress} />
@@ -121,28 +115,29 @@ export default function BldInfo({setSelectedInfo}) {
 					<button className={css.button} type='button' onClick={initBldInfo}>초기화</button>
 				</div>
             </div>
-			{!isSelected && bldInfos.map((b,i) => {
-				return (
-					<div className={css.addressForm} key={`bldInfo${i}`}>
-                        <div className={css.row}>
-                            <input className={css.textInput} type="text" value={`${b.bldNm}${b.dongNm}`} placeholder="건물명" readOnly />
-                        </div>
-                        <div className={css.row}>
-                            <input className={css.textInput} type="text" value={b.mainPurpsCdNm} placeholder="주용도" readOnly />
-                        </div>
-                        <div className={css.row}>
-                            <input className={css.textInput} type="text" value={`${b.ugrndFlrCnt}/${b.grndFlrCnt}`} placeholder="층수" readOnly />
-                        </div>
-                        <div className={css.row}>
-                            <input className={css.textInput} type="text" value={b.totArea} placeholder="면적" readOnly />
-                        </div>
-                        <div className={css.row}>
-                            <input className={css.textInput} type="text" value={b.useAprDay} placeholder="승인일" readOnly />
-                        </div>
-                        <button className={css.button} type='button' onClick={() => onSelectInfo(b)}>선택</button>
-				    </div>
-			    )})
-			}
+			{!isSelected &&
+				bldInfos.map((b,i) => {
+					return (
+						<div className={css.addressForm} key={`bldInfo${i}`}>
+							<div className={css.row}>
+								<input className={css.textInput} type="text" value={`${b.bldNm}${b.dongNm}`} placeholder="건물명" readOnly />
+							</div>
+							<div className={css.row}>
+								<input className={css.textInput} type="text" value={b.mainPurpsCdNm} placeholder="주용도" readOnly />
+							</div>
+							<div className={css.row}>
+								<input className={css.textInput} type="text" value={`${b.ugrndFlrCnt}/${b.grndFlrCnt}`} placeholder="층수" readOnly />
+							</div>
+							<div className={css.row}>
+								<input className={css.textInput} type="text" value={b.totArea} placeholder="면적" readOnly />
+							</div>
+							<div className={css.row}>
+								<input className={css.textInput} type="text" value={b.useAprDay} placeholder="승인일" readOnly />
+							</div>
+							<button className={css.button} type='button' onClick={() => onSelectInfo(b)}>선택</button>
+						</div>
+					)})
+		}
 		</div>
 	);
 }

@@ -1,14 +1,19 @@
-'use client'; // 클라이언트 컴포넌트로 선언
+'use client';
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import Rentlist from '@/components/rentlist/rentlist'; // 경로에 맞게 수정
-import BldInfo from '@/components/bldinfo/bldinfo'; // 경로에 맞게 수정
-import css from "./write.module.css";
-import { regBldInfo } from "@/utils/core";
+import { regBldInfo, delBldInfo } from "@/utils/core";
 import { useSelector } from 'react-redux';
 import { buildingsState, contractsState } from "@/app/slices/storeSlice";
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
+
+
+
+import Rentlist from '@/components/rentlist/rentlist';
+import BldInfo from '@/components/bldinfo/bldinfo';
+import css from "./write.module.css";
 
 export default function Write() {
 	const router = useRouter();
@@ -44,7 +49,7 @@ export default function Write() {
 				}
 			})
 		}
-	}, [bldList]);
+	}, [bldList, pathname]);
 
 	useEffect(() => {
 		let pathnameArray = pathname.split('/')
@@ -52,7 +57,7 @@ export default function Write() {
 			const _contractList = contractList.filter(l => l.bldId === Number(pathnameArray[pathnameArray.length - 1]))
 			setRentList(_contractList)
 		}
-	}, [contractList]);
+	}, [contractList, pathname]);
 
 	useEffect(() => {
 		if(bldDefaultInfo !== null) {
@@ -68,51 +73,41 @@ export default function Write() {
 
 	useEffect(() => {
 		if(rentList) {
-			console.log('rentList', rentList);
+			toast.success('고객 정보가 수정되었습니다.');
 		}
 	},[rentList]);
 
 	const onSave = useCallback(() => {
 		if (isEditMode) {
-			regBldInfo(
-				{
-					id,
-					address,
-					bldName,
-					mainPurps,
-					floor,
-					platArea,
-					totArea,
-					useAprDay
-				},
-				rentList
-			)
+			regBldInfo({ id, address, bldName, mainPurps, floor, platArea, totArea, useAprDay }, rentList)
+			.then(() => {
+				toast.warning('일정이 삭제되었습니다.');
+			});
 		} else {
-			regBldInfo(
-				{
-					id : null,
-					address,
-					bldName,
-					mainPurps,
-					floor,
-					platArea,
-					totArea,
-					useAprDay
-				},
-				rentList
-			)
+			regBldInfo({ address, bldName, mainPurps, floor, platArea, totArea, useAprDay }, rentList
+			).then(() => {
+				toast.success('건물정보가 등록되었습니다.');
+				router.push("/rsms");
+			});
 		}
-	}, [bldDefaultInfo, rentList, isEditMode, address, bldName, mainPurps, platArea, totArea, useAprDay]);
+	}, [rentList, isEditMode, address, bldName, mainPurps, platArea, totArea, useAprDay, router, floor, id]);
 
 	const onCancel = useCallback(() => {
 		router.push("/rsms");
-	}, []);
+	}, [router]);
+
+	const onDelete = useCallback(() => {
+		delBldInfo(id).then(() => {
+			toast.success('건물정보가 삭제되었습니다.');
+			router.push("/rsms");
+		});
+	}, [id, router]);
 
 	return (
-	<ScrollArea className="h-[80vh] w-[100%] rounded-md pb-5">
-		<div className={css.cardContainer}>
-			<div className={css.card}>
-				<div className={css.addressForm}>
+		<ScrollArea className="h-[85vh] w-[100%] rounded-md pb-5">
+			<div className={css.cardContainer}>
+				<div className={css.card}>
+
 					<div className={css.row}>
 						<label className={css.label}>주소</label>
 						<input className={css.textInput} type="text" value={address} placeholder="주소" onChange={(e) => setAddress(e.target.value)}/>
@@ -141,21 +136,22 @@ export default function Write() {
 						<label className={css.label}>승인일</label>
 						<input className={css.textInput} type="text" value={useAprDay} placeholder="승인일" onChange={(e) => setUseAprDay(e.target.value)}/>
 					</div>
+
+				</div>
+				<div className={css.card}>
+					<BldInfo setSelectedInfo={setBldDefaultInfo}/>
+				</div>
+				<div className={css.card}>
+					<Rentlist setRentList={setRentList} contractList={rentList}/>
+				</div>
+				<div className={css.addressForm}>
+					<div className={css.row}>
+						<Button onClick={onSave}>저장</Button>
+						{id && <Button type="button" variant="destructive" onClick={onDelete}>삭제</Button>}
+						<Button type="button" variant="secondary" onClick={onCancel}>뒤로</Button>
+					</div>
 				</div>
 			</div>
-			<div className={css.card}>
-				<BldInfo setSelectedInfo={setBldDefaultInfo}/>
-			</div>
-			<div className={css.card}>
-				<Rentlist setRentList={setRentList} contractList={rentList}/>
-			</div>
-			<div className={css.addressForm}>
-				<div className={css.row}>
-					<button className={css.button} type='button' onClick={onSave}>저장</button>
-					<button className={css.button} type='button' onClick={onCancel}>취소</button>
-				</div>
-			</div>
-		</div>
-	</ScrollArea>
+		</ScrollArea>
 	);
 }

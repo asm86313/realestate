@@ -12,7 +12,6 @@
 
 .mainLayout{
 	display: flex;
-	max-height: 90vh;
 }
 
 .cardContainer {
@@ -29,7 +28,7 @@
 }
 
 .mainContainer{
-	width: 80%;
+	width: 100%;
 	padding: 10px;
 }
 

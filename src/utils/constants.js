@@ -19,7 +19,7 @@ export const cityFullName = [
 
 export const depositStatus = [
     {value: 'deposit', title: '입금'},
-    {value: 'Withdrawal', title: '출금'},
+    {value: 'withdrawal', title: '출금'},
 ]
 
 export const dataBaseUrl = process.env.NEXT_PUBLIC_DATA_BASE_URL;

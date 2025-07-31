@@ -23,14 +23,7 @@ export default function List() {
 	return (
 		<div className={css.cardContainer}>
 			<div className={css.tableWrap}>
-				{bldList.length > 0 &&
-					<TanstackTable bldList={bldList} onClickList={onClickList}/>
-				}
-			</div>
-			<div className={css.addressForm}>
-				<div className={css.row}>
-					<button className={css.button} type="button" onClick={handleButtonClick}>{'등록'}</button>
-				</div>
+				<TanstackTable bldList={bldList} onClickList={onClickList} onRegister={handleButtonClick}/>
 			</div>
 		</div>
 	);

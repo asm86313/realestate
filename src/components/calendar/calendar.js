@@ -28,8 +28,6 @@ import FullCalendar from '@fullcalendar/react';
 import listPlugin from "@fullcalendar/list";
 import koLocale from '@fullcalendar/core/locales/ko';
 
-
-
 import css from "./calendar.module.css";
 
 export default function Calendar({getScheduleList}) {
@@ -128,14 +126,12 @@ console.log('isInterest', isInterest)
 	}, [event]);
 
 	const onDelete = useCallback(()=>{
-		deleteSchedule({
-			id: id
-		})
-		setIsOpen(false)
-		setTimeout(() => {
+		deleteSchedule(id).then(() => {
+			toast.success('일정이 삭제되었습니다.');
+			setIsOpen(false);
 			getScheduleList();
-		}, 100);
-	}, [id]);
+		});
+	}, [id, getScheduleList]);
 
 	useEffect(() => {
 		const today = dayjs();
@@ -171,70 +167,62 @@ console.log('isInterest', isInterest)
 	}, [])
 
 	return (
-		<>
-			<div className={css.calendarContainer} style={{  margin:15, display:'grid', gridTemplateColumns:"2fr 1fr"}}>
-				<FullCalendar
-					plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-					initialView={'dayGridMonth'}
-					locale={koLocale}
-					headerToolbar={
-						{
-							start: 'prevYear,prev',
-							center: 'title',
-							end: 'next,nextYear today addEventButton dayGridMonth,dayGridWeek,listMonth'
-							// end: 'addEventButton dayGridMonth,dayGridWeek,dayGridDay,listMonth'
-						}
-					}
-					editable={true}
-					eventDurationEditable={true}
-					height={"75vh"}
-					droppable={true}
-					dateClick={onAddEvent}
-					eventClick={onEditEvent}
-					events={event}
-					customButtons={{
-							addEventButton: {
-								text: '일정추가',
-								click: () => onAddEvent(),
-							}
-						}
-					}
-					eventDrop={onEventDrop}
-				/>
-			</div>
-			<Sheet open={isOpen} onOpenChange={setIsOpen}>
-				<SheetTrigger asChild />
-				<SheetContent>
-					<SheetHeader>
-						<SheetTitle>{id ? '일정 수정' : '새 일정 추가'}</SheetTitle>
-						<SheetDescription>
-							{id ? '일정을 수정하세요' : '새로운 일정을 추가 하세요'}
-						</SheetDescription>
-					</SheetHeader>
+		<div className={css.cardContainer}>
+			<div className={css.calendarContainer}>
+				<div className={css.toolContainer}>
+					<Select>
+						<SelectTrigger >
+							<SelectValue placeholder="구분" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectGroup>
+							{myBldList.map(list => {
+								return <SelectItem value={list.id} key={list.address + list.id} onClick={() => setSelectedBuilding(list)}>{`${list.address}`}</SelectItem>
+							})}
+							</SelectGroup>
+						</SelectContent>
+					</Select>
+				</div>
+				<div style={{ display:'grid' }}>
+					<FullCalendar
+						plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+						initialView={'dayGridMonth'}
+						locale={koLocale}
+						// headerToolbar={
+						// 	{
+						// 		start: 'prevYear,prev',
+						// 		center: 'title',
+						// 		end: 'next,nextYear today dayGridMonth,dayGridWeek,listMonth'
+						// 		// end: 'addEventButton dayGridMonth,dayGridWeek,dayGridDay,listMonth'
+						// 	}
+						// }
+						editable={true}
+						eventDurationEditable={true}
+						height="auto"
+						droppable={true}
+						dateClick={onAddEvent}
+						eventClick={onEditEvent}
+						events={event}
+						// customButtons={{
+						// 		addEventButton: {
+						// 			text: '일정추가',
+						// 			click: () => onAddEvent(),
+						// 		}
+						// 	}
+						// }
+						eventDrop={onEventDrop}
+					/>
+				</div>
+				<Sheet open={isOpen} onOpenChange={setIsOpen}>
+					<SheetTrigger asChild />
+					<SheetContent className={css.sheetContent}>
 						<div className={css.addressForm}>
-						<div className={css.row}>
-							<label className={css.label}>건물 구분</label>
-								<Select>
-									<SelectTrigger className="w-[300px]">
-										<SelectValue placeholder="건물 구분" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectGroup>
-										{myBldList.map(list => {
-											return <SelectItem value={list.id} key={list.address + list.id}>{`${list.address}`}</SelectItem>
-										})}
-										</SelectGroup>
-									</SelectContent>
-								</Select>
+							<div className={css.row}>
+								<input className={css.textInput} type="text" value={description} placeholder="내용을 입력하세요" onChange={(e) => setDescription(e.target.value)}/>
 							</div>
 							<div className={css.row}>
-								<label className={css.label}>내용</label>
-								<input className={css.textInput} type="text" value={description} placeholder="일정을 입력하세요" onChange={(e) => setDescription(e.target.value)}/>
-							</div>
-							<div className={css.row}>
-							<label className={css.label}>입출금 구분</label>
 								<Select>
-									<SelectTrigger className="w-[300px]">
+									<SelectTrigger>
 										<SelectValue placeholder="입출금 구분" />
 									</SelectTrigger>
 									<SelectContent>
@@ -247,40 +235,25 @@ console.log('isInterest', isInterest)
 								</Select>
 							</div>
 							<div className={css.row}>
-								<label className={css.label}>입금자</label>
 								<input className={css.textInput} type="text" value={description} placeholder="대상을 입력하세요" onChange={(e) => setDescription(e.target.value)}/>
 							</div>
 							<div className={css.row}>
-								<label className={css.label}>금액</label>
 								<input className={css.textInput} type="number" value={description} placeholder="금액을 입력하세요" onChange={(e) => setDescription(e.target.value)}/>
 							</div>
-							<div className={css.checkRow}>
-								<label className={css.label}>이자 여부</label>
-								<div className="flex items-center space-x-2">
-									<Checkbox id="terms" value={isInterest} onCheckedChange={(e) => setInterest(!isInterest)}/>
-								</div>
+							<div className={css.row}>
+								<input className={css.textInput} type="number" value={description} placeholder="금리를 입력하세요" onChange={(e) => setDescription(e.target.value)}/>
 							</div>
 							<div className={css.row}>
-								<label className={css.label}>금리</label>
-								<input className={css.textInput} disabled={!isInterest} type="number" value={description} placeholder="금리를 입력하세요" onChange={(e) => setDescription(e.target.value)}/>
-							</div>
-							<div className={css.row}>
-								<label className={css.label}>시작일</label>
 								<input className={css.textInput} type="datetime-local" value={startDate} placeholder="시작일" onChange={(e) => setStartDate(e.target.value)}/>
 							</div>
 							<div className={css.row}>
-								<label className={css.label}>종료일</label>
 								<input className={css.textInput} type="datetime-local" value={endDate} placeholder="종료일" onChange={(e) => setEndDate(e.target.value)}/>
 							</div>
-							{/* {!id &&
-								<div className={css.row}>
-									<label className={css.label}>{`반복(개월)`}</label>
-									<input className={css.textInput} type="text" value={repeat} placeholder="반복(개월)" onChange={(e) => setRepeat(e.target.value)}/>
-								</div>
-							} */}
 							<div className={css.row}>
-							<label className={css.label}>{`비고`}</label>
-								<Textarea className='h-[200px]' value={notes} onChange={(e) => setNotes(e.target.value)}/>
+								<input className={css.textInput} type="text" value={repeat} placeholder="반복(개월)" onChange={(e) => setRepeat(e.target.value)}/>
+							</div>
+							<div className={css.row}>
+								<Textarea className='h-[100px]' value={notes}  placeholder="비고" onChange={(e) => setNotes(e.target.value)}/>
 							</div>
 							<div className={css.buttonWrap}>
 								<Button type='button' onClick={onSave} >{id ? '수정' : '저장'}</Button>
@@ -288,8 +261,9 @@ console.log('isInterest', isInterest)
 								{id && <Button variant="destructive" type='button' onClick={onDelete}>삭제</Button>}
 							</div>
 						</div>
-				</SheetContent>
-			</Sheet>
-		</>
+					</SheetContent>
+				</Sheet>
+			</div>
+		</div>
 	);
 }

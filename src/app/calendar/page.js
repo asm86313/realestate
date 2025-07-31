@@ -11,7 +11,7 @@ import { Toaster } from "sonner";
 import Calendar from '@/components/calendar/calendar';
 import css from "./layout.module.css";
 
-export default function page() {
+export default function Page() {
 	const dispatch = useDispatch();
 	const user = useSelector(userData);
 

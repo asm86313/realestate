@@ -1,19 +1,22 @@
-.calendarContainer>div{
-    width: 55vw;
-}
-
-.calendarContainer{
-    justify-content: center;
-}
-
 .cardContainer {
     width: 100%;
     display: inline-block;
     flex-wrap: wrap;
     gap: 16px;
     justify-content: center;
-    padding: 20px 60px 20px 20px;
-  }
+}
+
+.calendarContainer {
+    height: 85vh;
+}
+
+.toolContainer {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+
 
 .card {
 width: 100%;
@@ -110,4 +113,11 @@ background-color: #fff;
     .button {
     width: 100%; /* 작은 화면에서는 버튼이 가득 차게 */
     }
+}
+
+.sheetContent {
+  overflow-y: auto;
+  max-height: 100vh;
+  padding-right: 8px; /* 스크롤바 공간 */
+  width: 100%;
 }

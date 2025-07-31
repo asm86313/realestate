@@ -1,6 +1,8 @@
 "use client"; // 클라이언트 사이드에서만 동작하도록 지정
 
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button"
+
 import css from "./rentlist.module.css";
 
 export default function Rentlist({ setRentList, contractList }) {
@@ -236,7 +238,7 @@ export default function Rentlist({ setRentList, contractList }) {
 				<p>관리비: {row.managementFee}</p>
 			</div>
 		))}
-        <button className={css.button} onClick={addRow}> + 임차인 추가 </button>
+        <Button type="button" variant="outline" onClick={addRow}> + 임차인 추가 </Button>
       </div>
     </div>
   );

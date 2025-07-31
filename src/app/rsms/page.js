@@ -6,12 +6,14 @@ import { useDispatch } from 'react-redux';
 import { setBuildings, setContracts } from "@/app/slices/storeSlice";
 import { useCallback, useEffect } from 'react';
 
+import { Toaster } from "sonner";
 
-export default function page() {
+
+export default function Page() {
   const dispatch = useDispatch();
 
-  const getBldList = useCallback(async() => {
-    const res = await getBldInfo();
+  const getBldList = useCallback(async(a) => {
+    const res = await getBldInfo(a);
     if(res) {
       dispatch(setBuildings(res.data.Buildings))
       dispatch(setContracts(res.data.Contracts))
@@ -19,12 +21,16 @@ export default function page() {
   }, [])
 
   useEffect(() => {
-    getBldList();
+    getBldList(1);
+    getBldList(2);
+    getBldList(3);
+    getBldList(4);
   }, [])
 
   return (
     <div>
       <List/>
+      <Toaster position="top-right" richColors />
     </div>
   );
 }
