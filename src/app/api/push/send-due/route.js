@@ -125,8 +125,12 @@ async function generateRecurringLedgerEntries(ctx, getHolidaySet) {
 // 매일 정해진 시간에 크론(Vercel Cron 등)이 호출해서
 // 반복 일정 템플릿을 오늘자 일정으로 생성하고, 오늘 날짜인 일정을 찾아 등록된 모든 기기로 푸시를 보낸다.
 export async function GET(request) {
+	// 크론 전용 엔드포인트라 외부에서 호출되면 안 된다.
+	// CRON_SECRET이 설정되지 않은 환경에서도 열리지 않도록 막는다(fail closed).
+	// Vercel Cron은 프로젝트에 CRON_SECRET이 있으면 이 헤더를 자동으로 붙여준다.
+	const cronSecret = process.env.CRON_SECRET;
 	const authHeader = request.headers.get('authorization');
-	if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+	if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
 		return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
 	}
 
