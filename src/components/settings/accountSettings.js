@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Copy, KeyRound, LogOut, Mail, Save, ShieldCheck, Trash2, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Copy, KeyRound, LogOut, Mail, Save, ShieldCheck, Trash2, User as UserIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -18,6 +18,7 @@ export default function AccountSettings() {
 	const user = useAuthStore((state) => state.user);
 	const [loginMode, setLoginMode] = useState('email'); // 'email' | 'familyCode'
 	const [step, setStep] = useState('email'); // 'email' | 'otp'
+	const [showFirstTime, setShowFirstTime] = useState(false); // 이름·초대코드 영역 펼침 여부
 	const [email, setEmail] = useState('');
 	const [name, setName] = useState('');
 	const [otp, setOtp] = useState('');
@@ -60,6 +61,7 @@ export default function AccountSettings() {
 		setName('');
 		setOtp('');
 		setInviteCode('');
+		setShowFirstTime(false);
 	}, []);
 
 	const onSendOtp = useCallback(async () => {
@@ -323,18 +325,6 @@ export default function AccountSettings() {
 							) : step === 'email' ? (
 								<div className="flex flex-col gap-3">
 									<div className="flex flex-col gap-1.5">
-										<Label>이름 (처음이신 경우)</Label>
-										<Input value={name} placeholder="이름" onChange={(e) => setName(e.target.value)} />
-									</div>
-									<div className="flex flex-col gap-1.5">
-										<Label>초대코드 (처음이신 경우 가족에게 받은 코드)</Label>
-										<Input
-											value={inviteCode}
-											placeholder="예: AB12CD34"
-											onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-										/>
-									</div>
-									<div className="flex flex-col gap-1.5">
 										<Label>이메일</Label>
 										<Input
 											type="email"
@@ -344,6 +334,38 @@ export default function AccountSettings() {
 											onKeyDown={(e) => e.key === 'Enter' && onSendOtp()}
 										/>
 									</div>
+
+									{/* 이름/초대코드는 신규 가입 때만 쓰이므로 기본으로 접어둔다.
+									    초대코드를 비우면 새 가족의 대표로, 채우면 그 가족의 구성원으로 가입한다. */}
+									<button
+										type="button"
+										className="flex items-center gap-1 self-start text-sm text-muted-foreground hover:text-foreground"
+										onClick={() => setShowFirstTime((v) => !v)}
+									>
+										<ChevronDown className={`size-4 transition-transform ${showFirstTime ? 'rotate-180' : ''}`} />
+										처음이신가요?
+									</button>
+
+									{showFirstTime && (
+										<div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-3">
+											<div className="flex flex-col gap-1.5">
+												<Label>이름</Label>
+												<Input value={name} placeholder="이름" onChange={(e) => setName(e.target.value)} />
+											</div>
+											<div className="flex flex-col gap-1.5">
+												<Label>초대코드</Label>
+												<Input
+													value={inviteCode}
+													placeholder="예: AB12CD34"
+													onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+												/>
+												<p className="text-xs text-muted-foreground">
+													가족에게 받은 코드가 있으면 입력하세요. 비워두면 새로 시작합니다.
+												</p>
+											</div>
+										</div>
+									)}
+
 									<Button type="button" className="gap-1.5" disabled={loading} onClick={onSendOtp}>
 										<Mail className="size-4" /> 인증코드 받기
 									</Button>
