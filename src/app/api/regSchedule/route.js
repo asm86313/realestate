@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { requireUser, resolveOwnerId } from '@/lib/apiAuth';
 
 export async function POST(request) {
@@ -7,7 +7,7 @@ export async function POST(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	const { schedule } = await request.json();
 
@@ -20,7 +20,7 @@ export async function POST(request) {
 
 		// 기존 일정을 수정하는 경우, 우리 가족 소유가 맞는지 먼저 확인
 		if (id) {
-			const { data: existing, error: existingError } = await supabase
+			const { data: existing, error: existingError } = await supabaseAdmin
 				.from('Schedule')
 				.select('ownerId')
 				.eq('id', id)
@@ -35,7 +35,7 @@ export async function POST(request) {
 		const payload = { start, end, description, notes, rept, allday, bldId: bldId ?? null, ownerId };
 		if (id) payload.id = id;
 
-		const { error } = await supabase.from('Schedule').upsert(payload, { onConflict: ['id'] });
+		const { error } = await supabaseAdmin.from('Schedule').upsert(payload, { onConflict: ['id'] });
 
 		if (error) throw error;
 
@@ -55,7 +55,7 @@ export async function DELETE(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	try {
 		const { id } = await request.json();
@@ -64,7 +64,7 @@ export async function DELETE(request) {
 			return new NextResponse(JSON.stringify({ message: '삭제할 일정 ID가 없습니다.' }), { status: 400 });
 		}
 
-		const { error, count } = await supabase.from('Schedule').delete({ count: 'exact' }).eq('id', id).eq('ownerId', ownerId);
+		const { error, count } = await supabaseAdmin.from('Schedule').delete({ count: 'exact' }).eq('id', id).eq('ownerId', ownerId);
 
 		if (error) throw error;
 

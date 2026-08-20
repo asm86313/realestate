@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { requireUser } from '@/lib/apiAuth';
 
 // 가족코드 로그인 시, 대표가 이 코드를 폐기(삭제)했는지 확인한다.
@@ -16,7 +16,7 @@ export async function POST(request) {
 		return new NextResponse(JSON.stringify({ revoked: true, message: '코드가 없습니다.' }), { status: 400 });
 	}
 
-	const { data, error } = await supabase
+	const { data, error } = await supabaseAdmin
 		.from('InviteCodes')
 		.select('revoked')
 		.eq('code', code.trim().toUpperCase())

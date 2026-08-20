@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { requireUser, resolveOwnerId } from '@/lib/apiAuth';
 
 // Next.js가 서버 fetch를 기본 캐싱하지 않도록 매 요청 새로 실행되게 강제한다.
@@ -9,9 +9,9 @@ export async function GET(request) {
 	if (!user) {
 		return new Response(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
-	const { data: Schedule, error } = await supabase.from('Schedule').select('*').eq('ownerId', ownerId);
+	const { data: Schedule, error } = await supabaseAdmin.from('Schedule').select('*').eq('ownerId', ownerId);
 
 	if (error) {
 		return new Response(JSON.stringify({ error: error.message }), { status: 500 });

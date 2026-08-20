@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { requireUser, resolveOwnerId } from '@/lib/apiAuth';
 import { codeToEmail } from '@/utils/familyCode';
 
@@ -19,7 +19,7 @@ export async function POST(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	// 가족대표만 초대코드/가족코드를 발급할 수 있다.
 	if (ownerId !== user.id) {
@@ -35,22 +35,34 @@ export async function POST(request) {
 	const code = generateCode();
 
 	// 가족코드 전용 로그인 계정 생성 (비밀번호 = 코드)
-	// role: 'member'와 code, familyOwnerId(=이 대표의 UID)를 함께 저장해서
-	// 이 계정으로 로그인하면 바로 대표의 가족 데이터에 접근하게 한다.
-	const { error: signUpError } = await supabase.auth.signUp({
+	// 서버에서 만드는 계정이므로 admin.createUser를 쓴다. signUp과 달리 세션을 만들지 않고,
+	// email_confirm으로 즉시 인증 처리한다 (familycode.internal은 실제 메일함이 아니라 확인 메일을 받을 수 없다).
+	//
+	// 소속(어느 가족인지)은 user_metadata가 아니라 FamilyMembers 테이블에 기록한다.
+	// user_metadata는 로그인한 본인이 고칠 수 있어서 소속 근거로 쓸 수 없다.
+	const { data: created, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
 		email: codeToEmail(code),
 		password: code,
-		options: {
-			data: { role: 'member', code, familyOwnerId: ownerId },
-		},
+		email_confirm: true,
+		user_metadata: { role: 'member', code },
 	});
 
-	if (signUpError) {
+	if (signUpError || !created?.user) {
 		console.error('가족코드 계정 생성 실패:', signUpError);
 		return new NextResponse(JSON.stringify({ message: '가족코드 발급에 실패했습니다.' }), { status: 500 });
 	}
 
-	const { error } = await supabase.from('InviteCodes').insert({
+	const { error: memberError } = await supabaseAdmin.from('FamilyMembers').insert({
+		userId: created.user.id,
+		ownerId,
+	});
+
+	if (memberError) {
+		console.error('가족 소속 기록 실패:', memberError);
+		return new NextResponse(JSON.stringify({ message: '가족코드 발급에 실패했습니다.' }), { status: 500 });
+	}
+
+	const { error } = await supabaseAdmin.from('InviteCodes').insert({
 		ownerId,
 		code,
 		createdByEmail: email,

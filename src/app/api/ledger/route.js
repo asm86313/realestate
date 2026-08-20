@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { requireUser, resolveOwnerId } from '@/lib/apiAuth';
 
 // Next.js가 서버 fetch를 기본 캐싱하지 않도록 매 요청 새로 실행되게 강제한다.
@@ -12,7 +12,7 @@ export async function GET(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	const { searchParams } = new URL(request.url);
 	const bldId = searchParams.get('bldId');
@@ -22,7 +22,7 @@ export async function GET(request) {
 		return new NextResponse(JSON.stringify({ message: 'bldId 또는 date가 필요합니다.' }), { status: 400 });
 	}
 
-	let query = supabase
+	let query = supabaseAdmin
 		.from('Ledger')
 		.select('*, Buildings!inner(address, ownerId)')
 		.eq('Buildings.ownerId', ownerId)
@@ -48,7 +48,7 @@ export async function POST(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	const { entry } = await request.json();
 
@@ -57,7 +57,7 @@ export async function POST(request) {
 	}
 
 	// 이 건물이 우리 가족 소유가 맞는지 확인
-	const { data: bld, error: bldError } = await supabase
+	const { data: bld, error: bldError } = await supabaseAdmin
 		.from('Buildings')
 		.select('id')
 		.eq('id', entry.bldId)
@@ -85,7 +85,7 @@ export async function POST(request) {
 	};
 	if (entry.id) payload.id = entry.id;
 
-	const { error } = await supabase.from('Ledger').upsert(payload, { onConflict: ['id'] });
+	const { error } = await supabaseAdmin.from('Ledger').upsert(payload, { onConflict: ['id'] });
 
 	if (error) {
 		console.error('장부 저장 실패:', error);
@@ -100,7 +100,7 @@ export async function DELETE(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	const { id } = await request.json();
 
@@ -109,7 +109,7 @@ export async function DELETE(request) {
 	}
 
 	// 삭제 대상 항목이 우리 가족 소유 건물에 속하는지 확인
-	const { data: existing, error: existingError } = await supabase
+	const { data: existing, error: existingError } = await supabaseAdmin
 		.from('Ledger')
 		.select('id, Buildings!inner(ownerId)')
 		.eq('id', id)
@@ -124,7 +124,7 @@ export async function DELETE(request) {
 		return new NextResponse(JSON.stringify({ message: '권한이 없거나 존재하지 않는 항목입니다.' }), { status: 403 });
 	}
 
-	const { error } = await supabase.from('Ledger').delete().eq('id', id);
+	const { error } = await supabaseAdmin.from('Ledger').delete().eq('id', id);
 
 	if (error) {
 		console.error('장부 삭제 실패:', error);

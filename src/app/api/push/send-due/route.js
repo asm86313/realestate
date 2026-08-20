@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import webpush from '@/lib/webpush';
 import { getHolidayDatesForMonth } from '@/lib/holidays';
 
@@ -32,7 +32,7 @@ async function getTodayContext() {
 // 반복 일정 템플릿 중, 오늘이 지정한 날짜(dayOfMonth, 필요시 휴무일 보정)이고
 // 이번 달에 아직 안 만든 것들을 실제 Schedule 항목으로 생성한다.
 async function generateRecurringSchedules(ctx, getHolidaySet) {
-	const { data: templates, error } = await supabase
+	const { data: templates, error } = await supabaseAdmin
 		.from('ScheduleTemplates')
 		.select('*')
 		.eq('active', true);
@@ -52,7 +52,7 @@ async function generateRecurringSchedules(ctx, getHolidaySet) {
 
 		const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(effectiveDay).padStart(2, '0')}`;
 
-		const { error: insertError } = await supabase.from('Schedule').insert({
+		const { error: insertError } = await supabaseAdmin.from('Schedule').insert({
 			ownerId: tpl.ownerId,
 			start: `${dateStr}T09:00:00`,
 			end: `${dateStr}T18:00:00`,
@@ -68,7 +68,7 @@ async function generateRecurringSchedules(ctx, getHolidaySet) {
 			continue;
 		}
 
-		await supabase
+		await supabaseAdmin
 			.from('ScheduleTemplates')
 			.update({ lastGeneratedMonth: currentMonthKey })
 			.eq('id', tpl.id);
@@ -78,7 +78,7 @@ async function generateRecurringSchedules(ctx, getHolidaySet) {
 // 반복 장부 템플릿 중, 오늘이 지정한 날짜(필요시 휴무일 보정)이고
 // 이번 달에 아직 안 만든 것들을 실제 Ledger 항목으로 생성한다.
 async function generateRecurringLedgerEntries(ctx, getHolidaySet) {
-	const { data: templates, error } = await supabase
+	const { data: templates, error } = await supabaseAdmin
 		.from('LedgerTemplates')
 		.select('*')
 		.eq('active', true);
@@ -98,7 +98,7 @@ async function generateRecurringLedgerEntries(ctx, getHolidaySet) {
 
 		const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(effectiveDay).padStart(2, '0')}`;
 
-		const { error: insertError } = await supabase.from('Ledger').insert({
+		const { error: insertError } = await supabaseAdmin.from('Ledger').insert({
 			bldId: tpl.bldId,
 			date: dateStr,
 			purpose: tpl.purpose,
@@ -115,7 +115,7 @@ async function generateRecurringLedgerEntries(ctx, getHolidaySet) {
 			continue;
 		}
 
-		await supabase
+		await supabaseAdmin
 			.from('LedgerTemplates')
 			.update({ lastGeneratedMonth: currentMonthKey })
 			.eq('id', tpl.id);
@@ -148,7 +148,7 @@ export async function GET(request) {
 	const todayEnd = new Date();
 	todayEnd.setHours(23, 59, 59, 999);
 
-	const { data: schedules, error: scheduleError } = await supabase
+	const { data: schedules, error: scheduleError } = await supabaseAdmin
 		.from('Schedule')
 		.select('*')
 		.gte('start', todayStart.toISOString())
@@ -163,7 +163,7 @@ export async function GET(request) {
 		return new NextResponse(JSON.stringify({ message: '오늘 알림 보낼 일정이 없습니다.', sent: 0 }), { status: 200 });
 	}
 
-	const { data: subscriptions, error: subError } = await supabase.from('PushSubscriptions').select('*');
+	const { data: subscriptions, error: subError } = await supabaseAdmin.from('PushSubscriptions').select('*');
 
 	if (subError) {
 		console.error('구독 조회 실패:', subError);
@@ -215,7 +215,7 @@ export async function GET(request) {
 	}
 
 	if (staleEndpoints.length > 0) {
-		await supabase.from('PushSubscriptions').delete().in('endpoint', staleEndpoints);
+		await supabaseAdmin.from('PushSubscriptions').delete().in('endpoint', staleEndpoints);
 	}
 
 	return new NextResponse(

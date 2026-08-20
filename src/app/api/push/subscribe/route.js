@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { requireUser, resolveOwnerId } from '@/lib/apiAuth';
 
 // 브라우저의 푸시 구독 정보를 저장한다.
@@ -8,7 +8,7 @@ export async function POST(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	const { subscription } = await request.json();
 
@@ -16,7 +16,7 @@ export async function POST(request) {
 		return new NextResponse(JSON.stringify({ message: '구독 정보가 올바르지 않습니다.' }), { status: 400 });
 	}
 
-	const { error } = await supabase.from('PushSubscriptions').upsert(
+	const { error } = await supabaseAdmin.from('PushSubscriptions').upsert(
 		{
 			ownerId,
 			endpoint: subscription.endpoint,
@@ -40,7 +40,7 @@ export async function DELETE(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	const { endpoint } = await request.json();
 
@@ -48,7 +48,7 @@ export async function DELETE(request) {
 		return new NextResponse(JSON.stringify({ message: 'endpoint가 없습니다.' }), { status: 400 });
 	}
 
-	const { error } = await supabase.from('PushSubscriptions').delete().eq('endpoint', endpoint).eq('ownerId', ownerId);
+	const { error } = await supabaseAdmin.from('PushSubscriptions').delete().eq('endpoint', endpoint).eq('ownerId', ownerId);
 
 	if (error) {
 		console.error('구독 삭제 실패:', error);

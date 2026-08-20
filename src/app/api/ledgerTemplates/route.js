@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { requireUser, resolveOwnerId } from '@/lib/apiAuth';
 
 // Next.js가 서버 fetch를 기본 캐싱하지 않도록 매 요청 새로 실행되게 강제한다.
@@ -10,9 +10,9 @@ export async function GET(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
-	const { data, error } = await supabase
+	const { data, error } = await supabaseAdmin
 		.from('LedgerTemplates')
 		.select('*')
 		.eq('ownerId', ownerId)
@@ -31,7 +31,7 @@ export async function POST(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	const { template } = await request.json();
 
@@ -41,7 +41,7 @@ export async function POST(request) {
 
 	// 기존 템플릿을 수정하는 경우, 우리 가족 소유가 맞는지 먼저 확인
 	if (template.id) {
-		const { data: existing, error: existingError } = await supabase
+		const { data: existing, error: existingError } = await supabaseAdmin
 			.from('LedgerTemplates')
 			.select('ownerId')
 			.eq('id', template.id)
@@ -72,7 +72,7 @@ export async function POST(request) {
 	};
 	if (template.id) payload.id = template.id;
 
-	const { error } = await supabase.from('LedgerTemplates').upsert(payload, { onConflict: ['id'] });
+	const { error } = await supabaseAdmin.from('LedgerTemplates').upsert(payload, { onConflict: ['id'] });
 
 	if (error) {
 		console.error('반복 장부 템플릿 저장 실패:', error);
@@ -87,7 +87,7 @@ export async function DELETE(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	const { id } = await request.json();
 
@@ -95,7 +95,7 @@ export async function DELETE(request) {
 		return new NextResponse(JSON.stringify({ message: '삭제할 항목 ID가 없습니다.' }), { status: 400 });
 	}
 
-	const { error } = await supabase.from('LedgerTemplates').delete().eq('id', id).eq('ownerId', ownerId);
+	const { error } = await supabaseAdmin.from('LedgerTemplates').delete().eq('id', id).eq('ownerId', ownerId);
 
 	if (error) {
 		console.error('반복 장부 템플릿 삭제 실패:', error);

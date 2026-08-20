@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { requireUser, resolveOwnerId } from '@/lib/apiAuth';
 
 // 가족대표가 가족회원을 삭제(코드 폐기)한다.
@@ -10,7 +10,7 @@ export async function POST(request) {
 	if (!user) {
 		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
 	}
-	const ownerId = resolveOwnerId(user);
+	const ownerId = await resolveOwnerId(user);
 
 	const { code } = await request.json();
 
@@ -19,7 +19,7 @@ export async function POST(request) {
 	}
 
 	// 내 가족이 발급한 코드만 폐기할 수 있다.
-	const { error } = await supabase
+	const { error } = await supabaseAdmin
 		.from('InviteCodes')
 		.update({ revoked: true })
 		.eq('code', code.trim().toUpperCase())

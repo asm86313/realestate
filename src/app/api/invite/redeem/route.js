@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { requireUser } from '@/lib/apiAuth';
 
 // 신규 가입 시 초대코드를 검증/소비한다.
@@ -14,12 +14,29 @@ export async function POST(request) {
 
 	const { code, email } = await request.json();
 
-	// 초대코드 없이 가입 = 새로운 가족의 대표
+	// 초대코드 없이 가입 = 새로운 가족의 대표.
+	// FamilyMembers에 아무것도 넣지 않으면 resolveOwnerId가 본인 UID를 대표로 본다.
 	if (!code) {
 		return new NextResponse(JSON.stringify({ ok: true, bootstrap: true }), { status: 200 });
 	}
 
-	const { data: invite, error: findError } = await supabase
+	// 이미 어느 가족에 속해 있으면 다른 가족으로 갈아탈 수 없다.
+	const { data: existing, error: existingError } = await supabaseAdmin
+		.from('FamilyMembers')
+		.select('ownerId')
+		.eq('userId', user.id)
+		.maybeSingle();
+
+	if (existingError) {
+		console.error('가족 소속 조회 실패:', existingError);
+		return new NextResponse(JSON.stringify({ ok: false, message: '초대코드 확인에 실패했습니다.' }), { status: 500 });
+	}
+
+	if (existing) {
+		return new NextResponse(JSON.stringify({ ok: false, message: '이미 가족에 속해 있는 계정입니다.' }), { status: 400 });
+	}
+
+	const { data: invite, error: findError } = await supabaseAdmin
 		.from('InviteCodes')
 		.select('*')
 		.eq('code', code.trim().toUpperCase())
@@ -35,7 +52,22 @@ export async function POST(request) {
 		return new NextResponse(JSON.stringify({ ok: false, message: '유효하지 않거나 이미 사용된 초대코드입니다.' }), { status: 400 });
 	}
 
-	const { error: updateError } = await supabase
+	if (invite.revoked) {
+		return new NextResponse(JSON.stringify({ ok: false, message: '삭제된 초대코드입니다.' }), { status: 400 });
+	}
+
+	// 소속을 서버 전용 테이블에 기록한다. 이게 이 계정의 유일한 가족 소속 근거다.
+	const { error: memberError } = await supabaseAdmin.from('FamilyMembers').insert({
+		userId: user.id,
+		ownerId: invite.ownerId,
+	});
+
+	if (memberError) {
+		console.error('가족 소속 기록 실패:', memberError);
+		return new NextResponse(JSON.stringify({ ok: false, message: '초대코드 처리에 실패했습니다.' }), { status: 500 });
+	}
+
+	const { error: updateError } = await supabaseAdmin
 		.from('InviteCodes')
 		.update({ usedByEmail: email, usedAt: new Date().toISOString() })
 		.eq('id', invite.id);

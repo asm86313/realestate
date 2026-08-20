@@ -120,10 +120,12 @@ export default function AccountSettings() {
 					return;
 				}
 
-				// 초대코드 없이 가입 = 새로운 가족의 대표, 초대코드로 가입 = 그 가족의 구성원
-				const { data: updated } = result.bootstrap
-					? await supabase.auth.updateUser({ data: { role: 'owner' } })
-					: await supabase.auth.updateUser({ data: { role: 'member', familyOwnerId: result.familyOwnerId } });
+				// 초대코드 없이 가입 = 새로운 가족의 대표, 초대코드로 가입 = 그 가족의 구성원.
+				// 실제 소속은 서버가 FamilyMembers에 이미 기록했다. 여기서 넣는 role은
+				// 화면 표시용(초대코드 발급 UI 노출 여부)일 뿐이라 권한 근거로 쓰이지 않는다.
+				const { data: updated } = await supabase.auth.updateUser({
+					data: { role: result.bootstrap ? 'owner' : 'member' },
+				});
 				if (updated?.user) loggedInUser = updated.user;
 			} catch (err) {
 				await supabase.auth.signOut();
