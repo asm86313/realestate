@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
 import { codeToEmail } from '@/utils/familyCode';
+import { authedFetch } from '@/utils/authedFetch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,7 +40,7 @@ export default function AccountSettings() {
 	const loadMembers = useCallback(async () => {
 		setMembersLoading(true);
 		try {
-			const res = await fetch('/api/invite/list');
+			const res = await authedFetch('/api/invite/list');
 			const result = await res.json();
 			setMembers(result.members || []);
 		} catch (err) {
@@ -105,7 +106,7 @@ export default function AccountSettings() {
 
 		if (isNewUser) {
 			try {
-				const res = await fetch('/api/invite/redeem', {
+				const res = await authedFetch('/api/invite/redeem', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ code: inviteCode, email }),
@@ -119,11 +120,11 @@ export default function AccountSettings() {
 					return;
 				}
 
-				// 초대코드 없이 통과된 최초 가입 = 가족대표
-				if (result.bootstrap) {
-					const { data: updated } = await supabase.auth.updateUser({ data: { role: 'owner' } });
-					if (updated?.user) loggedInUser = updated.user;
-				}
+				// 초대코드 없이 가입 = 새로운 가족의 대표, 초대코드로 가입 = 그 가족의 구성원
+				const { data: updated } = result.bootstrap
+					? await supabase.auth.updateUser({ data: { role: 'owner' } })
+					: await supabase.auth.updateUser({ data: { role: 'member', familyOwnerId: result.familyOwnerId } });
+				if (updated?.user) loggedInUser = updated.user;
 			} catch (err) {
 				await supabase.auth.signOut();
 				setLoading(false);
@@ -158,7 +159,7 @@ export default function AccountSettings() {
 
 		// 가족대표가 삭제(폐기)한 코드인지 확인
 		try {
-			const res = await fetch('/api/invite/check', {
+			const res = await authedFetch('/api/invite/check', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ code }),
@@ -189,7 +190,7 @@ export default function AccountSettings() {
 	const onCreateInvite = useCallback(async () => {
 		setIssuing(true);
 		try {
-			const res = await fetch('/api/invite/create', {
+			const res = await authedFetch('/api/invite/create', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ email: user?.email }),
@@ -220,7 +221,7 @@ export default function AccountSettings() {
 			// 가족회원 계정이면 대표가 보는 목록에도 이름을 동기화한다.
 			const myCode = user?.user_metadata?.code;
 			if (myCode) {
-				await fetch('/api/invite/sync-name', {
+				await authedFetch('/api/invite/sync-name', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ code: myCode, name: profileName }),
@@ -236,7 +237,7 @@ export default function AccountSettings() {
 
 	const onRemoveMember = useCallback(async (code) => {
 		try {
-			const res = await fetch('/api/invite/revoke', {
+			const res = await authedFetch('/api/invite/revoke', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ code }),
@@ -348,15 +349,15 @@ export default function AccountSettings() {
 							) : (
 								<div className="flex flex-col gap-3">
 									<p className="text-sm text-muted-foreground">
-										<span className="font-medium text-foreground">{email}</span>로 6자리 인증코드를 보냈습니다.
+										<span className="font-medium text-foreground">{email}</span>로 인증코드를 보냈습니다.
 									</p>
 									<div className="flex flex-col gap-1.5">
 										<Label>인증코드</Label>
 										<Input
 											inputMode="numeric"
-											maxLength={6}
+											maxLength={8}
 											value={otp}
-											placeholder="123456"
+											placeholder="12345678"
 											onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
 											onKeyDown={(e) => e.key === 'Enter' && onVerifyOtp()}
 										/>

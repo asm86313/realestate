@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Bell, BellOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { authedFetch } from '@/utils/authedFetch';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -53,7 +54,7 @@ export default function PushNotificationToggle() {
 				applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
 			});
 
-			const res = await fetch('/api/push/subscribe', {
+			const res = await authedFetch('/api/push/subscribe', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ subscription }),
@@ -78,7 +79,7 @@ export default function PushNotificationToggle() {
 			const subscription = await registration.pushManager.getSubscription();
 
 			if (subscription) {
-				await fetch('/api/push/subscribe', {
+				await authedFetch('/api/push/subscribe', {
 					method: 'DELETE',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ endpoint: subscription.endpoint }),

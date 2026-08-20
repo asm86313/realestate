@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireUser } from '@/lib/apiAuth';
 
 // 가족코드 로그인 시, 대표가 이 코드를 폐기(삭제)했는지 확인한다.
+// (signInWithPassword 직후 호출되므로 이 시점엔 이미 Supabase 세션이 생성돼 있다.)
 export async function POST(request) {
+	const user = await requireUser(request);
+	if (!user) {
+		return new NextResponse(JSON.stringify({ revoked: true, message: '로그인이 필요합니다.' }), { status: 401 });
+	}
+
 	const { code } = await request.json();
 
 	if (!code) {

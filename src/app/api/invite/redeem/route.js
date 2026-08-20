@@ -1,28 +1,22 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireUser } from '@/lib/apiAuth';
 
 // 신규 가입 시 초대코드를 검증/소비한다.
-// - 지금까지 발급된 초대코드가 하나도 없으면(=아직 아무도 앱 소유자로 자리잡지 않음) 첫 계정은 코드 없이 통과시킨다.
-// - 이후에는 유효하고 아직 사용되지 않은 코드가 있어야만 통과된다.
+// - 초대코드를 입력하지 않으면: 새로운 가족(워크스페이스)의 대표로 가입 (bootstrap)
+// - 초대코드를 입력하면: 그 코드를 발급한 가족의 구성원으로 합류 (유효하고 아직 미사용이어야 함)
+// (verifyOtp 직후 호출되므로 이 시점엔 이미 Supabase 세션이 생성돼 있다.)
 export async function POST(request) {
+	const user = await requireUser(request);
+	if (!user) {
+		return new NextResponse(JSON.stringify({ ok: false, message: '로그인이 필요합니다.' }), { status: 401 });
+	}
+
 	const { code, email } = await request.json();
 
-	const { count, error: countError } = await supabase
-		.from('InviteCodes')
-		.select('id', { count: 'exact', head: true });
-
-	if (countError || count === null) {
-		console.error('초대코드 확인 실패:', countError);
-		return new NextResponse(JSON.stringify({ ok: false, message: '초대코드 확인에 실패했습니다. (InviteCodes 테이블이 없을 수 있습니다)' }), { status: 500 });
-	}
-
-	// 아직 발급된 초대코드가 없는 상태 = 최초 가입(앱 소유자) → 무조건 통과
-	if (count === 0) {
-		return new NextResponse(JSON.stringify({ ok: true, bootstrap: true }), { status: 200 });
-	}
-
+	// 초대코드 없이 가입 = 새로운 가족의 대표
 	if (!code) {
-		return new NextResponse(JSON.stringify({ ok: false, message: '초대코드가 필요합니다.' }), { status: 400 });
+		return new NextResponse(JSON.stringify({ ok: true, bootstrap: true }), { status: 200 });
 	}
 
 	const { data: invite, error: findError } = await supabase
@@ -51,5 +45,5 @@ export async function POST(request) {
 		return new NextResponse(JSON.stringify({ ok: false, message: '초대코드 처리에 실패했습니다.' }), { status: 500 });
 	}
 
-	return new NextResponse(JSON.stringify({ ok: true }), { status: 200 });
+	return new NextResponse(JSON.stringify({ ok: true, familyOwnerId: invite.ownerId }), { status: 200 });
 }

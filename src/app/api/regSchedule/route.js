@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireUser, resolveOwnerId } from '@/lib/apiAuth';
 
 export async function POST(request) {
+	const user = await requireUser(request);
+	if (!user) {
+		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
+	}
+	const ownerId = resolveOwnerId(user);
+
 	const { schedule } = await request.json();
 
 	if (!schedule) {
@@ -10,7 +17,22 @@ export async function POST(request) {
 
 	try {
 		const { id, start, end, description, notes, rept, allday, bldId } = schedule;
-		const payload = { start, end, description, notes, rept, allday, bldId: bldId ?? null };
+
+		// 기존 일정을 수정하는 경우, 우리 가족 소유가 맞는지 먼저 확인
+		if (id) {
+			const { data: existing, error: existingError } = await supabase
+				.from('Schedule')
+				.select('ownerId')
+				.eq('id', id)
+				.maybeSingle();
+
+			if (existingError) throw existingError;
+			if (!existing || existing.ownerId !== ownerId) {
+				return new NextResponse(JSON.stringify({ message: '권한이 없습니다.' }), { status: 403 });
+			}
+		}
+
+		const payload = { start, end, description, notes, rept, allday, bldId: bldId ?? null, ownerId };
 		if (id) payload.id = id;
 
 		const { error } = await supabase.from('Schedule').upsert(payload, { onConflict: ['id'] });
@@ -29,6 +51,12 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
+	const user = await requireUser(request);
+	if (!user) {
+		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
+	}
+	const ownerId = resolveOwnerId(user);
+
 	try {
 		const { id } = await request.json();
 
@@ -36,7 +64,7 @@ export async function DELETE(request) {
 			return new NextResponse(JSON.stringify({ message: '삭제할 일정 ID가 없습니다.' }), { status: 400 });
 		}
 
-		const { error, count } = await supabase.from('Schedule').delete({ count: 'exact' }).eq('id', id);
+		const { error, count } = await supabase.from('Schedule').delete({ count: 'exact' }).eq('id', id).eq('ownerId', ownerId);
 
 		if (error) throw error;
 

@@ -1,14 +1,22 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireUser, resolveOwnerId } from '@/lib/apiAuth';
 
 // Next.js가 서버 fetch를 기본 캐싱하지 않도록 매 요청 새로 실행되게 강제한다.
 export const dynamic = 'force-dynamic';
 
 // 가족대표가 지금까지 발급한 가족회원 코드 목록을 조회한다.
-export async function GET() {
+export async function GET(request) {
+	const user = await requireUser(request);
+	if (!user) {
+		return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
+	}
+	const ownerId = resolveOwnerId(user);
+
 	const { data, error } = await supabase
 		.from('InviteCodes')
 		.select('id, code, memberName, revoked, createdAt')
+		.eq('ownerId', ownerId)
 		.order('createdAt', { ascending: false });
 
 	if (error) {

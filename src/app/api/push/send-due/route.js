@@ -53,6 +53,7 @@ async function generateRecurringSchedules(ctx, getHolidaySet) {
 		const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(effectiveDay).padStart(2, '0')}`;
 
 		const { error: insertError } = await supabase.from('Schedule').insert({
+			ownerId: tpl.ownerId,
 			start: `${dateStr}T09:00:00`,
 			end: `${dateStr}T18:00:00`,
 			description: tpl.description,
@@ -173,17 +174,27 @@ export async function GET(request) {
 		return new NextResponse(JSON.stringify({ message: '등록된 알림 구독이 없습니다.', sent: 0 }), { status: 200 });
 	}
 
+	// 가족(ownerId)별로 구독을 묶어서, 그 가족의 일정만 그 가족 구독자에게 보낸다.
+	const subsByOwner = new Map();
+	for (const sub of subscriptions) {
+		if (!subsByOwner.has(sub.ownerId)) subsByOwner.set(sub.ownerId, []);
+		subsByOwner.get(sub.ownerId).push(sub);
+	}
+
 	let sent = 0;
 	const staleEndpoints = [];
 
 	for (const schedule of schedules) {
+		const ownerSubs = subsByOwner.get(schedule.ownerId);
+		if (!ownerSubs || ownerSubs.length === 0) continue;
+
 		const payload = JSON.stringify({
 			title: '오늘 일정 알림',
 			body: schedule.description || '오늘 예정된 일정이 있습니다.',
 			url: '/calendar',
 		});
 
-		for (const sub of subscriptions) {
+		for (const sub of ownerSubs) {
 			const pushSubscription = {
 				endpoint: sub.endpoint,
 				keys: { p256dh: sub.p256dh, auth: sub.auth },

@@ -1,9 +1,10 @@
 
 import axios from 'axios';
+import apiClient from '@/utils/apiClient';
 
 export const regBldInfo = async (bldDefaultInfo, rentList) => {
     try {
-        const res = await axios.post('/api/regbldinfo', {
+        const res = await apiClient.post('/api/regbldinfo', {
             bldDefaultInfo,
             rentList
         });
@@ -18,7 +19,7 @@ export const regBldInfo = async (bldDefaultInfo, rentList) => {
 
 export const delBldInfo = async (id) => {
     try {
-        const res = await axios.delete('/api/regbldinfo', {
+        const res = await apiClient.delete('/api/regbldinfo', {
             data: {
                 id,
             }
@@ -44,7 +45,7 @@ export const getBldInfo = async () => {
     controller = new AbortController();
 
     try {
-        const res = await axios.get('/api/getbldinfo', {
+        const res = await apiClient.get('/api/getbldinfo', {
             signal: controller.signal, // ✅ AbortController 적용
         });
 
@@ -66,7 +67,7 @@ export const getBldInfo = async () => {
 
 export const regSchedule = async (schedule) => {
     try {
-        const res = await axios.post('/api/regSchedule', {
+        const res = await apiClient.post('/api/regSchedule', {
             schedule
         });
 
@@ -80,7 +81,7 @@ export const regSchedule = async (schedule) => {
 
 export const getSchedule = async() => {
     try {
-        const res = await axios.get('/api/getSchedule');
+        const res = await apiClient.get('/api/getSchedule');
 
         if (res.status === 200) {
             return res
@@ -92,7 +93,7 @@ export const getSchedule = async() => {
 
 export const deleteSchedule = async(id) => {
     try {
-        const res = await axios.delete('/api/regSchedule', {
+        const res = await apiClient.delete('/api/regSchedule', {
             data: {
                 id
             }
@@ -109,7 +110,7 @@ export const deleteSchedule = async(id) => {
 
 export const getLedger = async (bldId) => {
     try {
-        const res = await axios.get('/api/ledger', {
+        const res = await apiClient.get('/api/ledger', {
             params: { bldId },
         });
 
@@ -123,7 +124,7 @@ export const getLedger = async (bldId) => {
 
 export const getLedgerByDate = async (date) => {
     try {
-        const res = await axios.get('/api/ledger', {
+        const res = await apiClient.get('/api/ledger', {
             params: { date },
         });
 
@@ -137,7 +138,7 @@ export const getLedgerByDate = async (date) => {
 
 export const regLedger = async (entry) => {
     try {
-        const res = await axios.post('/api/ledger', {
+        const res = await apiClient.post('/api/ledger', {
             entry,
         });
 
@@ -151,7 +152,7 @@ export const regLedger = async (entry) => {
 
 export const delLedger = async (id) => {
     try {
-        const res = await axios.delete('/api/ledger', {
+        const res = await apiClient.delete('/api/ledger', {
             data: { id },
         });
 
@@ -165,7 +166,7 @@ export const delLedger = async (id) => {
 
 export const getLedgerTemplates = async () => {
     try {
-        const res = await axios.get('/api/ledgerTemplates');
+        const res = await apiClient.get('/api/ledgerTemplates');
 
         if (res.status === 200) {
             return res;
@@ -177,7 +178,7 @@ export const getLedgerTemplates = async () => {
 
 export const regLedgerTemplate = async (template) => {
     try {
-        const res = await axios.post('/api/ledgerTemplates', {
+        const res = await apiClient.post('/api/ledgerTemplates', {
             template,
         });
 
@@ -191,7 +192,7 @@ export const regLedgerTemplate = async (template) => {
 
 export const delLedgerTemplate = async (id) => {
     try {
-        const res = await axios.delete('/api/ledgerTemplates', {
+        const res = await apiClient.delete('/api/ledgerTemplates', {
             data: { id },
         });
 
@@ -205,7 +206,7 @@ export const delLedgerTemplate = async (id) => {
 
 export const getScheduleTemplates = async () => {
     try {
-        const res = await axios.get('/api/scheduleTemplates');
+        const res = await apiClient.get('/api/scheduleTemplates');
 
         if (res.status === 200) {
             return res;
@@ -217,7 +218,7 @@ export const getScheduleTemplates = async () => {
 
 export const regScheduleTemplate = async (template) => {
     try {
-        const res = await axios.post('/api/scheduleTemplates', {
+        const res = await apiClient.post('/api/scheduleTemplates', {
             template,
         });
 
@@ -231,7 +232,7 @@ export const regScheduleTemplate = async (template) => {
 
 export const delScheduleTemplate = async (id) => {
     try {
-        const res = await axios.delete('/api/scheduleTemplates', {
+        const res = await apiClient.delete('/api/scheduleTemplates', {
             data: { id },
         });
 

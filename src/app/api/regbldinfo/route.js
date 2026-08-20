@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireUser, resolveOwnerId } from '@/lib/apiAuth';
 
 export async function POST(request) {
+    const user = await requireUser(request);
+    if (!user) {
+        return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
+    }
+    const ownerId = resolveOwnerId(user);
+
     const { bldDefaultInfo, rentList } = await request.json();
 
     try {
@@ -9,7 +16,24 @@ export async function POST(request) {
 
         // 1. 건물정보 upsert
         if (bldDefaultInfo) {
-            const { data: bldData, error: bldError } = await supabase.from('Buildings').upsert([bldDefaultInfo], {onConflict: ['id']}).select();
+            // 기존 건물을 수정하는 경우, 우리 가족 소유가 맞는지 먼저 확인 (다른 가족 건물 id를 넣어 덮어쓰는 것 방지)
+            if (bldDefaultInfo.id) {
+                const { data: existing, error: existingError } = await supabase
+                    .from('Buildings')
+                    .select('ownerId')
+                    .eq('id', bldDefaultInfo.id)
+                    .maybeSingle();
+
+                if (existingError) throw existingError;
+                if (!existing || existing.ownerId !== ownerId) {
+                    return new NextResponse(JSON.stringify({ message: '권한이 없습니다.' }), { status: 403 });
+                }
+            }
+
+            const { data: bldData, error: bldError } = await supabase
+                .from('Buildings')
+                .upsert([{ ...bldDefaultInfo, ownerId }], { onConflict: ['id'] })
+                .select();
 
             if (bldError) throw bldError;
 
@@ -51,6 +75,12 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
+  const user = await requireUser(request);
+  if (!user) {
+    return new NextResponse(JSON.stringify({ message: '로그인이 필요합니다.' }), { status: 401 });
+  }
+  const ownerId = resolveOwnerId(user);
+
   try {
     const { id } = await request.json();
 
@@ -58,9 +88,13 @@ export async function DELETE(request) {
       return new NextResponse(JSON.stringify({ message: '삭제할 건물 ID가 없습니다.' }), { status: 400 });
     }
 
-    // 건물 삭제 시 관련 계약도 자동 삭제됨 (CASCADE)
-    const { error: buildingDeleteError } = await supabase
-      .from('Buildings').delete().eq('id', id);
+    // 건물 삭제 시 관련 계약도 자동 삭제됨 (CASCADE). 우리 가족 소유 건물만 삭제 가능.
+    const { error: buildingDeleteError, count } = await supabase
+      .from('Buildings').delete({ count: 'exact' }).eq('id', id).eq('ownerId', ownerId);
+
+    if (!buildingDeleteError && count === 0) {
+      return new NextResponse(JSON.stringify({ message: '권한이 없거나 존재하지 않는 건물입니다.' }), { status: 403 });
+    }
 
     if (buildingDeleteError) {
       throw buildingDeleteError;
