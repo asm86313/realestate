@@ -1,19 +1,7 @@
-// import pool from '../../../lib/db';
+import { supabase } from '@/lib/supabase';
 
-// export async function GET(request) {
-
-	
-
-// 	const [Buildings] = await pool.query('SELECT * FROM Buildings');
-// 	const [Contracts] = await pool.query('SELECT * FROM Contracts');
-
-// 	return new Response(JSON.stringify({ Buildings, Contracts }), { status: 200 });
-
-// }
-
-// app/api/your-route/route.js (또는 route.ts)
-
-import { supabase } from '@/lib/supabase'; // lib/supabaseClient.js 에서 export된 클라이언트
+// Next.js가 서버 fetch를 기본 캐싱하지 않도록 매 요청 새로 실행되게 강제한다.
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   // Buildings 테이블 가져오기

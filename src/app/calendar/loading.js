@@ -1,7 +1,5 @@
-import Image from "next/image";
+import LoadingSpinner from "@/components/loadingSpinner/loadingSpinner";
 
-export default function Home() {
-	return (
-		<>loadingloading!!!</>
-	);
+export default function Loading() {
+	return <LoadingSpinner/>;
 }

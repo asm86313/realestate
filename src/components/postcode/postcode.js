@@ -1,6 +1,7 @@
-
 import { useEffect, useState } from 'react';
-import css from "./postcode.module.css";
+import { Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const PostcodeSearch = ({setAddress}) => {
 	const [postcode, setPostcode] = useState('');
@@ -106,20 +107,20 @@ const PostcodeSearch = ({setAddress}) => {
 	};
 
 	return (
-		<div className={css.addressForm}>
-			<div className={css.row}>
-		  		<input className={css.textInput} type="text" value={postcode} placeholder="우편번호" readOnly />
-		  		<input className={css.button} type="button" onClick={sample4_execDaumPostcode} value="우편번호 찾기" />
+		<div className="flex flex-col gap-2">
+			<div className="flex gap-2">
+				<Input type="text" value={postcode} placeholder="우편번호" readOnly className="max-w-[8rem] bg-muted/40" />
+				<Button type="button" variant="outline" className="shrink-0 gap-1.5" onClick={sample4_execDaumPostcode}>
+					<Search className="size-4" /> 우편번호 찾기
+				</Button>
 			</div>
-			<div className={css.row}>
-		  		<input className={css.textInput} type="text" value={roadAddress} placeholder="도로명주소" readOnly />
-		  		<input className={css.textInput} type="text" value={jibunAddress} placeholder="지번주소" readOnly />
+			<div className="flex flex-col gap-2 sm:flex-row">
+				<Input type="text" value={roadAddress} placeholder="도로명주소" readOnly className="bg-muted/40" />
+				<Input type="text" value={jibunAddress} placeholder="지번주소" readOnly className="bg-muted/40" />
 			</div>
-			<div className={css.row}>
-		  		<input className={css.textInput} type="text" value={extraAddress} placeholder="참고항목" readOnly />
-			</div>
-			{guideText && <span className={css.guide}>{guideText}</span>}
-	  </div>
+			<Input type="text" value={extraAddress} placeholder="상세주소" readOnly className="bg-muted/40" />
+			{guideText && <span className="text-xs text-muted-foreground">{guideText}</span>}
+		</div>
 	);
 };
 

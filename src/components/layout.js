@@ -1,12 +1,46 @@
 'use client'; // 클라이언트 컴포넌트임을 선언
 
-import { store } from '../app/store'; // 방금 만든 store를 임포트
-import { Provider } from 'react-redux'; // react-redux에서 Provider 임포트
+import { useEffect, useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/useAuthStore';
+
+// 역할(role)이 아직 없는 계정을 만나면 보정한다.
+// - 가족코드 계정(user_metadata.code가 있음)은 항상 'member'
+// - 그 외(이메일로 직접 로그인한 계정)는 'owner'
+// 예전에 role 태깅 로직이 생기기 전에 이미 가입/로그인한 계정을 위한 자동 마이그레이션.
+async function ensureRole(user) {
+  if (!user || user.user_metadata?.role) return user;
+
+  const role = user.user_metadata?.code ? 'member' : 'owner';
+  const { data, error } = await supabase.auth.updateUser({ data: { role } });
+
+  return error ? user : data.user;
+}
 
 export default function ClientLayout({ children }) {
+  // 컴포넌트 인스턴스마다 한 번만 생성되도록 useState로 고정
+  const [queryClient] = useState(() => new QueryClient());
+
+  // 앱 전역에서 Supabase 로그인 세션을 useAuthStore와 동기화한다.
+  // (새로고침 시 세션 복원 + 로그인/로그아웃 상태변화 실시간 반영)
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      const user = await ensureRole(data.session?.user ?? null);
+      useAuthStore.getState().setUser(user);
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const user = await ensureRole(session?.user ?? null);
+      useAuthStore.getState().setUser(user);
+    });
+
+    return () => subscription.subscription.unsubscribe();
+  }, []);
+
   return (
-    <Provider store={store}>
+    <QueryClientProvider client={queryClient}>
       {children}
-    </Provider>
+    </QueryClientProvider>
   );
 }

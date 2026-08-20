@@ -1,43 +1,15 @@
 /* 전체 레이아웃 */
-.header{
-	padding: 1rem 1rem 0rem 1rem;
-	width: 100%;
-}
-
 .main {
-	padding: 1rem 1rem 1rem 1rem;
-	transition: margin-left 0.3s ease-in-out;
 	width: 100%;
+	padding: 1rem;
+	/* 하단 탭바(PC/모바일 공통)에 콘텐츠가 가리지 않도록 여백 확보 */
+	padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 1rem);
 }
 
-.mainLayout{
+.mainLayout {
 	display: flex;
 }
 
-.cardContainer {
-	width: 20%;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 16px;
-	justify-content: center;
-	padding: 10px;
-	height: 90vh;
-	position: sticky;
-	top: 0;
-	overflow-y: auto;
-}
-
-.mainContainer{
+.mainContainer {
 	width: 100%;
-	padding: 10px;
-}
-
-.card {
-	width: 100%;
-	border: 1px solid #ddd;
-	border-radius: 8px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-	padding: 16px;
-	background-color: #fff;
-	height: 100%;
 }

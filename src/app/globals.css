@@ -2,8 +2,202 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  /* 스크롤바 자리를 항상 확보해서, Dialog/Sheet가 열리고 닫힐 때
+     스크롤바가 사라졌다 나타나며 fixed 요소(하단 탭바 등)가 옆으로 밀리는 걸 방지한다.
+     Radix가 열릴 때 body/html에 직접 overflow:hidden을 주입하므로 !important로 이겨야 한다. */
+  overflow-y: scroll !important;
+}
+
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-weight: 400;
+}
+
+/* Radix Dialog/Sheet가 열리면 react-remove-scroll-bar가
+   body[data-scroll-locked]에 margin-right(기본 gapMode)로 스크롤바 폭만큼 보정을 넣는데,
+   위에서 스크롤바 자리를 이미 항상 확보해뒀으니 이 보정 때문에 본문이 왼쪽으로 밀린다.
+   Radix 규칙(body[data-scroll-locked])보다 명시도를 한 단계 높여서(html body[...]) 확실히 이긴다. */
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* FullCalendar를 shadcn 톤(무채색 + 라운드)에 맞춰 다시 스킨한다.
+   기본 진회색/각진 스타일이 오래돼 보여서, 앱 전체가 쓰는 CSS 변수로 통일한다. */
+.fc {
+  --fc-border-color: hsl(var(--border));
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: hsl(var(--muted));
+  --fc-list-event-hover-bg-color: hsl(var(--muted));
+  --fc-today-bg-color: hsl(var(--primary) / 0.06);
+  --fc-event-bg-color: hsl(var(--primary));
+  --fc-event-border-color: hsl(var(--primary));
+  --fc-event-text-color: hsl(var(--primary-foreground));
+  --fc-button-bg-color: hsl(var(--secondary));
+  --fc-button-border-color: transparent;
+  --fc-button-text-color: hsl(var(--secondary-foreground));
+  --fc-button-hover-bg-color: hsl(var(--accent));
+  --fc-button-hover-border-color: transparent;
+  --fc-button-active-bg-color: hsl(var(--primary));
+  --fc-button-active-border-color: transparent;
+  font-size: 0.8rem;
+}
+
+.fc .fc-toolbar.fc-header-toolbar {
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.fc .fc-button {
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.7rem;
+  box-shadow: none;
+  text-transform: none;
+  transition: background-color 0.15s ease;
+}
+
+.fc .fc-button:focus,
+.fc .fc-button:not(:disabled):active:focus {
+  box-shadow: none;
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  color: hsl(var(--primary-foreground));
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th,
+.fc-theme-standard .fc-scrollgrid {
+  border-color: hsl(var(--border));
+}
+
+/* 세로 구분선 없이 가로줄만 남긴다 */
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-left: none;
+  border-right: none;
+}
+
+.fc-theme-standard .fc-scrollgrid {
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+/* 일요일은 붉게, 토요일은 파랗게 */
+.fc .fc-day-sun .fc-daygrid-day-number,
+.fc .fc-col-header-cell.fc-day-sun .fc-col-header-cell-cushion {
+  color: #e11d48;
+}
+
+.fc .fc-day-sat .fc-daygrid-day-number,
+.fc .fc-col-header-cell.fc-day-sat .fc-col-header-cell-cushion {
+  color: #2563eb;
+}
+
+.fc .fc-col-header-cell-cushion {
+  padding: 8px 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  text-decoration: none;
+}
+
+.fc .fc-daygrid-day-number {
+  padding: 4px;
+  margin: 2px;
+  font-size: 0.75rem;
+  color: hsl(var(--foreground));
+  text-decoration: none;
+  min-width: 1.6rem;
+  text-align: center;
+}
+
+.fc .fc-daygrid-day-top {
+  justify-content: center;
+}
+
+/* 참고 앱처럼 칸 높이를 작고 컴팩트하게 */
+.fc .fc-daygrid-day-frame {
+  min-height: 3.25rem;
+  padding: 2px 0;
+}
+
+.fc .fc-daygrid-body-unbalanced .fc-daygrid-day-events {
+  min-height: 0;
+}
+
+/* 오늘 날짜: 항상 테두리 원 */
+.fc .fc-day-today .fc-daygrid-day-number {
+  border: 1.5px solid hsl(var(--foreground));
+  border-radius: 9999px;
+}
+
+.fc .fc-day-today {
+  background: transparent !important;
+}
+
+/* 오늘이 아닌 날짜를 선택했을 때: 채운 원 */
+.fc .fc-daygrid-day.is-selected .fc-daygrid-day-number {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border-radius: 9999px;
+}
+
+/* "+N" 더보기 링크(그 날짜의 일정 개수)를 날짜 숫자 바로 밑 가운데에 배치 */
+.fc .fc-daygrid-day-events {
+  display: flex;
+  justify-content: center;
+  margin: 0 !important;
+}
+
+.fc .fc-daygrid-day-bottom {
+  margin: 0;
+  text-align: center;
+}
+
+.fc .fc-daygrid-more-link {
+  display: inline-block;
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: hsl(var(--primary));
+}
+
+.fc .fc-event {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.fc .fc-list-day-cushion {
+  background: hsl(var(--muted) / 0.6);
+}
+
+.fc .fc-list-event:hover td {
+  background: hsl(var(--muted));
+}
+
+.fc .fc-list-event-title,
+.fc .fc-list-event-time {
+  font-size: 0.8rem;
+}
+
+.fc .fc-list-event-dot {
+  border-color: hsl(var(--primary));
 }
 
 @layer utilities {
@@ -20,19 +214,19 @@ body {
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
+    --primary: 173 80% 32%;
     --primary-foreground: 0 0% 98%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 173 60% 94%;
+    --accent-foreground: 173 80% 20%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
+    --ring: 173 80% 32%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
@@ -41,12 +235,12 @@ body {
     --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 173 80% 32%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent: 173 60% 94%;
+    --sidebar-accent-foreground: 173 80% 20%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 173 80% 32%;
   }
   .dark {
     --background: 240 10% 3.9%;
@@ -55,19 +249,19 @@ body {
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
+    --primary: 172 66% 50%;
+    --primary-foreground: 240 10% 3.9%;
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 173 40% 18%;
+    --accent-foreground: 172 66% 85%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --ring: 172 66% 50%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -75,12 +269,12 @@ body {
     --chart-5: 340 75% 55%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 172 66% 50%;
+    --sidebar-primary-foreground: 240 10% 3.9%;
+    --sidebar-accent: 173 40% 18%;
+    --sidebar-accent-foreground: 172 66% 85%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 172 66% 50%;
   }
 }
 

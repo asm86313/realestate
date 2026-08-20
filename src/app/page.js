@@ -1,14 +1,5 @@
-import Image from "next/image";
-import axios from 'axios';
+import HomeDashboard from '@/components/home/homeDashboard';
 
 export default function Home() {
-
-  return (
-      <div>dg</div>
-    );
-
+	return <HomeDashboard />;
 }
-
-
-
-
