@@ -11,6 +11,13 @@ const EMPTY_SCHEDULE = [];
 const EMPTY_LEDGER = [];
 const EMPTY_TEMPLATES = [];
 
+// QueryClient 기본 staleTime(30초, layout.js)이 이 initialData placeholder에도
+// 그대로 적용되면, 처음 페이지에 들어왔을 때도 "30초간 신선한 데이터"로 오인해서
+// 실제 fetch를 건너뛰어버린다(빈 목록만 보이고 API 호출 자체가 안 나감).
+// initialDataUpdatedAt을 0(아주 오래 전)으로 못박아서 이 placeholder는 항상
+// 처음부터 stale로 취급되게 한다 - 진짜로 fetch해온 데이터에는 영향 없다.
+const INITIAL_DATA_UPDATED_AT = 0;
+
 // 건물리스트 + 계약 목록 (같은 API에서 함께 내려온다)
 export function useBldInfoQuery() {
 	return useQuery({
@@ -20,6 +27,7 @@ export function useBldInfoQuery() {
 			return res?.data ?? EMPTY_BLD_INFO;
 		},
 		initialData: EMPTY_BLD_INFO,
+		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
 	});
 }
 
@@ -32,6 +40,7 @@ export function useScheduleQuery() {
 			return res?.data?.Schedule ?? EMPTY_SCHEDULE;
 		},
 		initialData: EMPTY_SCHEDULE,
+		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
 	});
 }
 
@@ -44,6 +53,7 @@ export function useLedgerQuery(bldId) {
 			return res?.data?.ledger ?? EMPTY_LEDGER;
 		},
 		initialData: EMPTY_LEDGER,
+		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
 		enabled: !!bldId,
 	});
 }
@@ -57,6 +67,7 @@ export function useLedgerByDateQuery(dateStr) {
 			return res?.data?.ledger ?? EMPTY_LEDGER;
 		},
 		initialData: EMPTY_LEDGER,
+		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
 		enabled: !!dateStr,
 	});
 }
@@ -70,6 +81,7 @@ export function useScheduleTemplatesQuery() {
 			return res?.data?.templates ?? EMPTY_TEMPLATES;
 		},
 		initialData: EMPTY_TEMPLATES,
+		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
 	});
 }
 
@@ -82,5 +94,6 @@ export function useLedgerTemplatesQuery() {
 			return res?.data?.templates ?? EMPTY_TEMPLATES;
 		},
 		initialData: EMPTY_TEMPLATES,
+		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
 	});
 }
