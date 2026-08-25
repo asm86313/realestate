@@ -7,4 +7,11 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+	global: {
+		// supabaseAdmin.js와 같은 이유 - Next.js의 fetch 캐시가 이 클라이언트가 보내는
+		// 요청(예: requireUser의 auth.getUser)까지 캐싱하는 걸 막는다. 브라우저에서 쓸 때도
+		// cache: 'no-store'는 표준 fetch 옵션이라 안전하다.
+		fetch: (url, options = {}) => fetch(url, { ...options, cache: 'no-store' }),
+	},
+});

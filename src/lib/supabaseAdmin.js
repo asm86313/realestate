@@ -20,4 +20,11 @@ if (!serviceRoleKey) {
 export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 	// 서버에는 로그인 세션이라는 개념이 없다. 토큰을 디스크/메모리에 남기지 않는다.
 	auth: { persistSession: false, autoRefreshToken: false },
+	global: {
+		// 각 API 라우트에 export const dynamic = 'force-dynamic'을 넣어뒀는데도,
+		// Next.js의 fetch 데이터 캐시가 supabase-js 내부 fetch 호출까지는 항상
+		// 확실히 안 꺼지는 경우가 있었다(삭제 직후에도 옛날 응답이 계속 나오는 버그로 확인됨).
+		// 이 클라이언트가 보내는 모든 요청에 캐시를 명시적으로 꺼서 근본적으로 막는다.
+		fetch: (url, options = {}) => fetch(url, { ...options, cache: 'no-store' }),
+	},
 });
