@@ -109,6 +109,11 @@ export default function Calendar() {
 	}, [openEditSheet]);
 
 	const onSave = useCallback(async ()=>{
+		// regSchedule은 실패해도 예외를 안 던지고 undefined를 반환하니(core.js),
+		// 반드시 await로 끝까지 기다리고 결과를 확인해야 한다 - 안 그러면 저장이
+		// 채 끝나기도 전에(특히 배포 환경의 실제 네트워크 왕복 시간 때문에) 아래에서
+		// 목록을 새로고침해버려서 방금 등록한 게 화면에 안 보이는 문제가 생긴다.
+		let ok = true;
 		if(repeat > 0 && id === null) {
 			for (let i = 0; i <= repeat; i++) {
 				const newStartDate = dayjs(startDate).add(i, 'month').format('YYYY-MM-DDTHH:mm');
@@ -124,11 +129,14 @@ export default function Calendar() {
 				  rept: 0,
 				  bldId: eventBldId,
 				};
-				// 스케줄을 비동기적으로 저장
-				await regSchedule(newSchedule);
+				const res = await regSchedule(newSchedule);
+				if (!res) {
+					ok = false;
+					break;
+				}
 			  }
 		} else {
-			regSchedule({
+			const res = await regSchedule({
 				id: id,
 				description: description,
 				start: startDate,
@@ -137,12 +145,16 @@ export default function Calendar() {
 				allday: true,
 				rept: 0,
 				bldId: eventBldId,
-			})
+			});
+			ok = !!res;
 		}
 
-		setTimeout(() => {
-			getScheduleList();
-		}, 100);
+		if (!ok) {
+			toast.error('저장에 실패했습니다.');
+			return;
+		}
+
+		getScheduleList();
 		setIsOpen(false);
 		toast.success(id ? '일정이 수정되었습니다.' : '일정이 등록되었습니다.');
 	}, [id, eventBldId, description, startDate, endDate, notes, repeat, getScheduleList]);
@@ -178,11 +190,11 @@ export default function Calendar() {
 		}
 	  }, [event]);
 
-	const onEventDrop = useCallback((e)=>{
+	const onEventDrop = useCallback(async (e)=>{
 		const { id, start, end, title:description, extendedProps } = e.event;
 		const startDate = dayjs(start).format('YYYY-MM-DDTHH:mm');
 		const endDate = dayjs(end).format('YYYY-MM-DDTHH:mm');
-		regSchedule({
+		const res = await regSchedule({
 			id: id,
 			description: description,
 			start: startDate,
@@ -192,7 +204,13 @@ export default function Calendar() {
 			rept: 0,
 			bldId: extendedProps.bldId ?? null,
 		});
-	}, [])
+		if (!res) {
+			toast.error('일정 이동에 실패했습니다.');
+			e.revert(); // 저장 실패했으면 드래그로 옮겨진 걸 원래 자리로 되돌린다
+			return;
+		}
+		getScheduleList();
+	}, [getScheduleList])
 
 	// 선택한 건물이 있으면 그 건물 일정만 필터링해서 보여준다.
 	const filteredEvent = selectedBldId
