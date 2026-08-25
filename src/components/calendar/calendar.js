@@ -151,12 +151,17 @@ export default function Calendar() {
 		setIsOpen(false)
 	}, []);
 
-	const onDelete = useCallback(()=>{
-		deleteSchedule(id).then(() => {
-			toast.success('일정이 삭제되었습니다.');
-			setIsOpen(false);
-			getScheduleList();
-		});
+	const onDelete = useCallback(async ()=>{
+		// deleteSchedule은 실패해도 예외를 던지지 않고 undefined를 반환하니
+		// (core.js), 반드시 결과를 확인해야 실패했을 때 성공 토스트가 안 뜬다.
+		const res = await deleteSchedule(id);
+		if (!res) {
+			toast.error('삭제에 실패했습니다.');
+			return;
+		}
+		toast.success('일정이 삭제되었습니다.');
+		setIsOpen(false);
+		getScheduleList();
 	}, [id, getScheduleList]);
 
 	useEffect(() => {
@@ -255,9 +260,10 @@ export default function Calendar() {
 					displayEventTime={false}
 					dayCellContent={(arg) => arg.date.getDate()}
 					dayCellClassNames={(arg) => {
+						// 오늘 날짜를 실제로 클릭해서 선택했을 때도 표시가 나야 하므로 예외 없이 채운다
+						// (회계 캘린더와 동일한 규칙).
 						const dateStr = dayjs(arg.date).format('YYYY-MM-DD');
-						// 오늘은 항상 테두리 원(.fc-day-today)만 쓰고, 오늘이 아닌 날짜를 선택했을 때만 채운 원을 쓴다.
-						return dateStr === selectedDate && dateStr !== dayjs().format('YYYY-MM-DD') ? ['is-selected'] : [];
+						return dateStr === selectedDate ? ['is-selected'] : [];
 					}}
 					moreLinkContent={(arg) => `+${arg.num}`}
 					moreLinkClick={(arg) => {

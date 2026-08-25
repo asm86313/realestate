@@ -94,12 +94,17 @@ export default function Write() {
 		router.push("/rsms");
 	}, [router]);
 
-	const onDelete = useCallback(() => {
-		delBldInfo(id).then(() => {
-			toast.success('건물정보가 삭제되었습니다.');
-			queryClient.invalidateQueries({ queryKey: ['bldInfo'] });
-			router.push("/rsms");
-		});
+	const onDelete = useCallback(async () => {
+		// delBldInfo는 실패해도 예외를 안 던지고 undefined를 반환하니(core.js),
+		// 결과를 확인해야 실패했을 때 성공 토스트가 잘못 뜨는 걸 막을 수 있다.
+		const res = await delBldInfo(id);
+		if (!res) {
+			toast.error('삭제에 실패했습니다.');
+			return;
+		}
+		toast.success('건물정보가 삭제되었습니다.');
+		queryClient.invalidateQueries({ queryKey: ['bldInfo'] });
+		router.push("/rsms");
 	}, [id, router, queryClient]);
 
 	const fields = [
