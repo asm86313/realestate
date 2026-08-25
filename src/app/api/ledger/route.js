@@ -72,6 +72,43 @@ export async function POST(request) {
 		return new NextResponse(JSON.stringify({ message: '권한이 없습니다.' }), { status: 403 });
 	}
 
+	// reportId(카테고리로 고른 요약표)를 넣는 경우, 그 요약표가 같은 건물 것인지 확인
+	// (다른 건물/가족 요약표에 슬쩍 연결하는 걸 막는다).
+	if (entry.reportId) {
+		const { data: rpt, error: rptError } = await supabaseAdmin
+			.from('LedgerReports')
+			.select('id')
+			.eq('id', entry.reportId)
+			.eq('bldId', entry.bldId)
+			.maybeSingle();
+
+		if (rptError) {
+			console.error('요약표 확인 실패:', rptError);
+			return new NextResponse(JSON.stringify({ message: '요약표 확인에 실패했습니다.' }), { status: 500 });
+		}
+		if (!rpt) {
+			return new NextResponse(JSON.stringify({ message: '유효하지 않은 요약표입니다.' }), { status: 400 });
+		}
+	}
+
+	// 통장도 같은 건물 것인지 확인 (통장은 카테고리처럼 건물 단위)
+	if (entry.bankAccountId) {
+		const { data: acc, error: accError } = await supabaseAdmin
+			.from('BankAccounts')
+			.select('id')
+			.eq('id', entry.bankAccountId)
+			.eq('bldId', entry.bldId)
+			.maybeSingle();
+
+		if (accError) {
+			console.error('통장 확인 실패:', accError);
+			return new NextResponse(JSON.stringify({ message: '통장 확인에 실패했습니다.' }), { status: 500 });
+		}
+		if (!acc) {
+			return new NextResponse(JSON.stringify({ message: '유효하지 않은 통장입니다.' }), { status: 400 });
+		}
+	}
+
 	const payload = {
 		bldId: entry.bldId,
 		date: entry.date || null,
@@ -81,7 +118,10 @@ export async function POST(request) {
 		interestRate: entry.interestRate || null,
 		interestAmount: entry.interestAmount || null,
 		borrowedDays: entry.borrowedDays || null,
+		interestAuto: entry.interestAuto ?? false,
 		notes: entry.notes || null,
+		reportId: entry.reportId || null,
+		bankAccountId: entry.bankAccountId || null,
 	};
 	if (entry.id) payload.id = entry.id;
 

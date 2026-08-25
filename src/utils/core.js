@@ -204,6 +204,90 @@ export const delLedgerTemplate = async (id) => {
     }
 };
 
+export const getLedgerReports = async (bldId) => {
+    try {
+        const res = await apiClient.get('/api/ledgerReports', {
+            params: { bldId },
+        });
+
+        if (res.status === 200) {
+            return res;
+        }
+    } catch (error) {
+        console.error('❌ API 요청 실패:', error);
+    }
+};
+
+export const saveLedgerReport = async (report) => {
+    try {
+        const res = await apiClient.post('/api/ledgerReports', {
+            report,
+        });
+
+        if (res.status === 200) {
+            return res;
+        }
+    } catch (error) {
+        console.error('❌ API 요청 실패:', error);
+    }
+};
+
+export const delLedgerReport = async (id) => {
+    try {
+        const res = await apiClient.delete('/api/ledgerReports', {
+            data: { id },
+        });
+
+        if (res.status === 200) {
+            return res;
+        }
+    } catch (error) {
+        console.error('❌ API 요청 실패:', error);
+    }
+};
+
+export const getBankAccounts = async (bldId) => {
+    try {
+        const res = await apiClient.get('/api/bankAccounts', {
+            params: { bldId },
+        });
+
+        if (res.status === 200) {
+            return res;
+        }
+    } catch (error) {
+        console.error('❌ API 요청 실패:', error);
+    }
+};
+
+export const saveBankAccount = async (account) => {
+    try {
+        const res = await apiClient.post('/api/bankAccounts', {
+            account,
+        });
+
+        if (res.status === 200) {
+            return res;
+        }
+    } catch (error) {
+        console.error('❌ API 요청 실패:', error);
+    }
+};
+
+export const delBankAccount = async (id) => {
+    try {
+        const res = await apiClient.delete('/api/bankAccounts', {
+            data: { id },
+        });
+
+        if (res.status === 200) {
+            return res;
+        }
+    } catch (error) {
+        console.error('❌ API 요청 실패:', error);
+    }
+};
+
 export const getScheduleTemplates = async () => {
     try {
         const res = await apiClient.get('/api/scheduleTemplates');
