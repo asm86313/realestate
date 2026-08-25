@@ -16,6 +16,22 @@ export async function requireUser(request) {
 	return data.user;
 }
 
+// user.app_metadata.ownerId를 써서 resolveOwnerId의 FamilyMembers 조회를 캐싱한다.
+// 순수 최적화라 실패해도(권한 없음, 네트워크 순단 등) 호출부의 진짜 작업을 막으면 안 되므로
+// 에러/예외를 전부 여기서 삼키고 로그만 남긴다. (다음 요청에서 다시 시도된다)
+export async function cacheOwnerId(user, ownerId) {
+	try {
+		const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+			app_metadata: { ...user.app_metadata, ownerId },
+		});
+		if (error) {
+			console.error('ownerId 캐싱 실패(다음 요청에서 재시도됨):', error);
+		}
+	} catch (err) {
+		console.error('ownerId 캐싱 중 예외 발생(다음 요청에서 재시도됨):', err);
+	}
+}
+
 // 이 유저가 속한 "가족(워크스페이스)"의 대표 UID를 반환한다.
 // - FamilyMembers에 기록이 있으면: 그 가족의 대표 UID
 // - 기록이 없으면: 본인이 곧 대표이므로 자기 UID
@@ -51,14 +67,8 @@ export async function resolveOwnerId(user) {
 
 	const ownerId = data?.ownerId || user.id;
 
-	// 다음 요청부터는 위 조회 없이 바로 캐시를 쓰도록 저장해둔다. 실패해도
-	// (권한 없음 등) 이번 요청의 ownerId 계산 자체는 이미 끝났으니 무시하고 진행한다.
-	const { error: cacheError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-		app_metadata: { ...user.app_metadata, ownerId },
-	});
-	if (cacheError) {
-		console.error('ownerId 캐싱 실패(다음 요청에서 재시도됨):', cacheError);
-	}
+	// 다음 요청부터는 위 조회 없이 바로 캐시를 쓰도록 저장해둔다.
+	await cacheOwnerId(user, ownerId);
 
 	return ownerId;
 }

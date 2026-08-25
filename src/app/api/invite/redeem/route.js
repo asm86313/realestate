@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { requireUser } from '@/lib/apiAuth';
+import { requireUser, cacheOwnerId } from '@/lib/apiAuth';
 
 // 신규 가입 시 초대코드를 검증/소비한다.
 // - 초대코드를 입력하지 않으면: 새로운 가족(워크스페이스)의 대표로 가입 (bootstrap)
@@ -18,12 +18,7 @@ export async function POST(request) {
 	// FamilyMembers에 아무것도 넣지 않으면 resolveOwnerId가 본인 UID를 대표로 본다.
 	// 그 조회조차 매번 하지 않도록 여기서 미리 본인 UID로 캐싱해둔다(실패해도 치명적이지 않음).
 	if (!code) {
-		const { error: metaError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-			app_metadata: { ...user.app_metadata, ownerId: user.id },
-		});
-		if (metaError) {
-			console.error('ownerId 캐싱 실패(다음 요청에서 재시도됨):', metaError);
-		}
+		await cacheOwnerId(user, user.id);
 		return new NextResponse(JSON.stringify({ ok: true, bootstrap: true }), { status: 200 });
 	}
 
@@ -75,13 +70,7 @@ export async function POST(request) {
 	}
 
 	// resolveOwnerId가 매 요청 FamilyMembers를 다시 조회하지 않도록 여기서 미리 캐싱해둔다.
-	// (실패해도 치명적이지 않다 - resolveOwnerId가 다음 요청에서 알아서 조회 후 재캐싱한다)
-	const { error: metaError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-		app_metadata: { ...user.app_metadata, ownerId: invite.ownerId },
-	});
-	if (metaError) {
-		console.error('ownerId 캐싱 실패(다음 요청에서 재시도됨):', metaError);
-	}
+	await cacheOwnerId(user, invite.ownerId);
 
 	const { error: updateError } = await supabaseAdmin
 		.from('InviteCodes')
