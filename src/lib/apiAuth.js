@@ -25,7 +25,18 @@ export async function requireUser(request) {
 // 로그인한 사용자가 supabase.auth.updateUser()로 직접 덮어쓸 수 있는 영역이다.
 // 즉 남의 UID를 써넣으면 그 가족 데이터에 접근할 수 있었다. 그래서 소속 정보를
 // service_role로만 접근 가능한 FamilyMembers 테이블로 옮겼다.
+//
+// 성능: 이 함수는 API 요청마다(=requireUser 이후) 호출되는데, 매번 FamilyMembers를
+// 조회하면 왕복이 하나 더 늘어난다. 그래서 한 번 조회한 결과를 app_metadata.ownerId에
+// 캐싱해둔다. app_metadata는 user_metadata와 달리 service_role로만 쓸 수 있어
+// 사용자가 위조할 수 없고, requireUser()의 auth.getUser(token)은 매번 Auth 서버에서
+// 최신 값을 가져오므로 캐시가 오래돼 보일 걱정도 없다.
+// 주의: 지금은 "가족 탈퇴/추방" 기능이 없어서 한 번 정해진 ownerId가 바뀌지 않는다.
+// 나중에 그런 기능을 추가하면, 이 캐시(app_metadata.ownerId)도 같이 지워줘야 한다.
 export async function resolveOwnerId(user) {
+	const cached = user.app_metadata?.ownerId;
+	if (cached) return cached;
+
 	const { data, error } = await supabaseAdmin
 		.from('FamilyMembers')
 		.select('ownerId')
@@ -38,5 +49,16 @@ export async function resolveOwnerId(user) {
 		throw new Error('가족 소속 정보를 확인할 수 없습니다.');
 	}
 
-	return data?.ownerId || user.id;
+	const ownerId = data?.ownerId || user.id;
+
+	// 다음 요청부터는 위 조회 없이 바로 캐시를 쓰도록 저장해둔다. 실패해도
+	// (권한 없음 등) 이번 요청의 ownerId 계산 자체는 이미 끝났으니 무시하고 진행한다.
+	const { error: cacheError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+		app_metadata: { ...user.app_metadata, ownerId },
+	});
+	if (cacheError) {
+		console.error('ownerId 캐싱 실패(다음 요청에서 재시도됨):', cacheError);
+	}
+
+	return ownerId;
 }

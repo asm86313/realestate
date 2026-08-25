@@ -21,7 +21,20 @@ async function ensureRole(user) {
 
 export default function ClientLayout({ children }) {
   // 컴포넌트 인스턴스마다 한 번만 생성되도록 useState로 고정
-  const [queryClient] = useState(() => new QueryClient());
+  // staleTime 기본값(0)이면 같은 화면을 다시 마운트할 때마다(탭 이동, 뒤로가기 등)
+  // 캐시가 있어도 즉시 재요청을 날린다. 30초 이내 재방문은 캐시를 그대로 쓰게 해서
+  // 체감 속도를 올린다 - 데이터를 바꾸는 동작(등록/수정/삭제)은 각 화면에서
+  // invalidateQueries를 호출해 캐시를 무효화하므로 최신성에는 영향 없다.
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 30 * 1000,
+          },
+        },
+      })
+  );
   const router = useRouter();
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
