@@ -106,6 +106,9 @@ export async function POST(request) {
 		bankAccountId: template.bankAccountId || null,
 		reportId: template.reportId || null,
 		dayOfMonth: Number(template.dayOfMonth),
+		startMonth: template.startMonth || null,
+		endMonth: template.endMonth || null,
+		intervalMonths: template.intervalMonths ? Math.max(1, Number(template.intervalMonths)) : 1,
 		active: template.active ?? true,
 		skipHoliday: template.skipHoliday ?? false,
 	};

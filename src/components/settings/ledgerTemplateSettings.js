@@ -34,10 +34,14 @@ const initialForm = {
 	interestRate: '',
 	interestAmount: '',
 	borrowedDays: '',
+	interestAuto: false,
 	notes: '',
 	reportId: null,
 	bankAccountId: null,
 	dayOfMonth: '',
+	startMonth: '',
+	endMonth: '',
+	intervalMonths: 1,
 	active: true,
 	skipHoliday: false,
 };
@@ -86,10 +90,14 @@ export default function LedgerTemplateSettings() {
 			interestRate: row.interestRate ?? '',
 			interestAmount: row.interestAmount ?? '',
 			borrowedDays: row.borrowedDays ?? '',
+			interestAuto: row.interestAuto ?? false,
 			notes: row.notes || '',
 			reportId: row.reportId ?? null,
 			bankAccountId: row.bankAccountId ?? null,
 			dayOfMonth: row.dayOfMonth ?? '',
+			startMonth: row.startMonth || '',
+			endMonth: row.endMonth || '',
+			intervalMonths: row.intervalMonths ?? 1,
 			active: row.active ?? true,
 			skipHoliday: row.skipHoliday ?? false,
 		});
@@ -178,10 +186,14 @@ export default function LedgerTemplateSettings() {
 			interestRate: form.interestRate,
 			interestAmount: form.interestAmount,
 			borrowedDays: form.borrowedDays,
+			interestAuto: form.interestAuto,
 			notes: form.notes,
 			reportId,
 			bankAccountId,
 			dayOfMonth: form.dayOfMonth,
+			startMonth: form.startMonth,
+			endMonth: form.endMonth,
+			intervalMonths: form.intervalMonths,
 			active: form.active,
 			skipHoliday: form.skipHoliday,
 		});
@@ -240,7 +252,10 @@ export default function LedgerTemplateSettings() {
 									<div className="min-w-0">
 										<p className="truncate text-sm font-medium">{row.purpose || '(내용 없음)'}</p>
 										<p className="truncate text-xs text-muted-foreground">
-											매월 {row.dayOfMonth}일{row.skipHoliday ? ' (휴무일이면 다음 평일)' : ''} · {bldName(row.bldId) || '건물 미상'}{!row.active ? ' · 꺼짐' : ''}
+											{row.intervalMonths > 1 ? `${row.intervalMonths}개월마다` : '매월'} {row.dayOfMonth}일
+											{row.skipHoliday ? ' (휴무일이면 다음 평일)' : ''} · {bldName(row.bldId) || '건물 미상'}
+											{(row.startMonth || row.endMonth) ? ` · ${row.startMonth || '처음'}~${row.endMonth || '무기한'}` : ''}
+											{!row.active ? ' · 꺼짐' : ''}
 										</p>
 									</div>
 								</div>
@@ -287,6 +302,29 @@ export default function LedgerTemplateSettings() {
 							<Input type="number" min="1" max="31" value={form.dayOfMonth} placeholder="예: 10" onChange={setField('dayOfMonth')} />
 						</div>
 						<div className="flex flex-col gap-1.5">
+							<Label>반복 주기 (개월마다)</Label>
+							<Input
+								type="number"
+								min="1"
+								value={form.intervalMonths}
+								placeholder="1 = 매월, 2 = 두 달마다"
+								onChange={setField('intervalMonths')}
+							/>
+						</div>
+						<div className="grid grid-cols-2 gap-3">
+							<div className="flex flex-col gap-1.5">
+								<Label>시작월 (선택)</Label>
+								<Input type="month" value={form.startMonth} onChange={setField('startMonth')} />
+							</div>
+							<div className="flex flex-col gap-1.5">
+								<Label>끝월 (선택)</Label>
+								<Input type="month" value={form.endMonth} onChange={setField('endMonth')} />
+							</div>
+						</div>
+						<p className="-mt-1.5 text-xs text-muted-foreground">
+							둘 다 비워두면 무기한 반복돼요. 반복 주기가 2 이상이면 시작월을 기준으로 그 주기에 맞는 달에만 생성돼요.
+						</p>
+						<div className="flex flex-col gap-1.5">
 							<Label>입금</Label>
 							<Input type="number" value={form.income} placeholder="입금" onChange={setField('income')} />
 						</div>
@@ -306,6 +344,18 @@ export default function LedgerTemplateSettings() {
 							<Label>빌린일수</Label>
 							<Input type="number" value={form.borrowedDays} placeholder="빌린일수" onChange={setField('borrowedDays')} />
 						</div>
+						<label className="flex items-center gap-2 rounded-md border p-3 text-sm">
+							<Checkbox
+								checked={form.interestAuto}
+								onCheckedChange={(checked) => setForm((p) => ({ ...p, interestAuto: checked === true }))}
+							/>
+							<span>
+								이자 매일 자동 계산
+								<span className="block text-xs text-muted-foreground">
+									이걸로 생성되는 장부 내역마다 켜져서, 요약표에서 매일 오늘 날짜 기준으로 다시 계산돼요.
+								</span>
+							</span>
+						</label>
 						<div className="flex flex-col gap-1.5">
 							<Label>카테고리 (요약표)</Label>
 							<Select

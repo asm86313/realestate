@@ -18,6 +18,27 @@ function resolveGenerationDay(year, month, day, daysInMonth, skipHoliday, holida
 	return day;
 }
 
+// "YYYY-MM" 두 개의 개월수 차이(a - b). 문자열 비교/파싱만으로 계산한다.
+function monthKeyDiff(a, b) {
+	const [ay, am] = a.split('-').map(Number);
+	const [by, bm] = b.split('-').map(Number);
+	return (ay - by) * 12 + (am - bm);
+}
+
+// 이 템플릿이 이번 달(currentMonthKey)에 생성 대상인지: 시작월/끝월 범위 안이고,
+// N개월마다 반복이면 시작월을 기준으로 몇 개월째인지 세서 그 배수인 달에만 해당한다.
+function isTemplateEligibleThisMonth(tpl, currentMonthKey, createdMonthKey) {
+	if (tpl.startMonth && currentMonthKey < tpl.startMonth) return false;
+	if (tpl.endMonth && currentMonthKey > tpl.endMonth) return false;
+
+	const interval = Number(tpl.intervalMonths) || 1;
+	if (interval <= 1) return true;
+
+	const anchor = tpl.startMonth || createdMonthKey;
+	const diff = monthKeyDiff(currentMonthKey, anchor);
+	return diff >= 0 && diff % interval === 0;
+}
+
 // 오늘 날짜 기준 정보 + (필요하다면 한 번만 가져온) 이번 달 공휴일 집합을 계산한다.
 async function getTodayContext() {
 	const today = new Date();
@@ -92,6 +113,9 @@ async function generateRecurringLedgerEntries(ctx, getHolidaySet) {
 	for (const tpl of templates) {
 		if (tpl.lastGeneratedMonth === currentMonthKey) continue;
 
+		const createdMonthKey = (tpl.createdAt || '').slice(0, 7) || currentMonthKey;
+		if (!isTemplateEligibleThisMonth(tpl, currentMonthKey, createdMonthKey)) continue;
+
 		const baseDay = Math.min(tpl.dayOfMonth, daysInMonth);
 		const effectiveDay = resolveGenerationDay(year, month, baseDay, daysInMonth, tpl.skipHoliday, holidaySet);
 		if (todayDay !== effectiveDay) continue;
@@ -154,6 +178,7 @@ export async function GET(request) {
 	todayStart.setHours(0, 0, 0, 0);
 	const todayEnd = new Date();
 	todayEnd.setHours(23, 59, 59, 999);
+	const todayDateStr = `${ctx.year}-${String(ctx.month).padStart(2, '0')}-${String(ctx.todayDay).padStart(2, '0')}`;
 
 	const { data: schedules, error: scheduleError } = await supabaseAdmin
 		.from('Schedule')
@@ -166,8 +191,19 @@ export async function GET(request) {
 		return new NextResponse(JSON.stringify({ message: '일정 조회에 실패했습니다.' }), { status: 500 });
 	}
 
-	if (!schedules || schedules.length === 0) {
-		return new NextResponse(JSON.stringify({ message: '오늘 알림 보낼 일정이 없습니다.', sent: 0 }), { status: 200 });
+	// Ledger엔 ownerId가 없어서, 건물(Buildings)을 거쳐 어느 가족 것인지 알아낸다.
+	const { data: ledgerEntries, error: ledgerError } = await supabaseAdmin
+		.from('Ledger')
+		.select('*, Buildings!inner(ownerId, address)')
+		.eq('date', todayDateStr);
+
+	if (ledgerError) {
+		console.error('장부 조회 실패:', ledgerError);
+		return new NextResponse(JSON.stringify({ message: '장부 조회에 실패했습니다.' }), { status: 500 });
+	}
+
+	if ((!schedules || schedules.length === 0) && (!ledgerEntries || ledgerEntries.length === 0)) {
+		return new NextResponse(JSON.stringify({ message: '오늘 알림 보낼 게 없습니다.', sent: 0 }), { status: 200 });
 	}
 
 	const { data: subscriptions, error: subError } = await supabaseAdmin.from('PushSubscriptions').select('*');
@@ -181,7 +217,7 @@ export async function GET(request) {
 		return new NextResponse(JSON.stringify({ message: '등록된 알림 구독이 없습니다.', sent: 0 }), { status: 200 });
 	}
 
-	// 가족(ownerId)별로 구독을 묶어서, 그 가족의 일정만 그 가족 구독자에게 보낸다.
+	// 가족(ownerId)별로 구독을 묶어서, 그 가족의 알림만 그 가족 구독자에게 보낸다.
 	const subsByOwner = new Map();
 	for (const sub of subscriptions) {
 		if (!subsByOwner.has(sub.ownerId)) subsByOwner.set(sub.ownerId, []);
@@ -190,16 +226,12 @@ export async function GET(request) {
 
 	let sent = 0;
 	const staleEndpoints = [];
+	const numberFmt = new Intl.NumberFormat('ko-KR');
 
-	for (const schedule of schedules) {
-		const ownerSubs = subsByOwner.get(schedule.ownerId);
-		if (!ownerSubs || ownerSubs.length === 0) continue;
-
-		const payload = JSON.stringify({
-			title: '오늘 일정 알림',
-			body: schedule.description || '오늘 예정된 일정이 있습니다.',
-			url: '/calendar',
-		});
+	// 같은 가족 구독자들에게 알림 하나를 전부 발송한다.
+	const sendToOwner = async (ownerId, payload) => {
+		const ownerSubs = subsByOwner.get(ownerId);
+		if (!ownerSubs || ownerSubs.length === 0) return;
 
 		for (const sub of ownerSubs) {
 			const pushSubscription = {
@@ -219,6 +251,33 @@ export async function GET(request) {
 				}
 			}
 		}
+	};
+
+	for (const schedule of schedules || []) {
+		await sendToOwner(
+			schedule.ownerId,
+			JSON.stringify({
+				title: '오늘 일정 알림',
+				body: schedule.description || '오늘 예정된 일정이 있습니다.',
+				url: '/calendar',
+			})
+		);
+	}
+
+	for (const entry of ledgerEntries || []) {
+		const amountText = entry.income
+			? `입금 ${numberFmt.format(entry.income)}원`
+			: entry.expense
+				? `출금 ${numberFmt.format(entry.expense)}원`
+				: '';
+		await sendToOwner(
+			entry.Buildings.ownerId,
+			JSON.stringify({
+				title: '오늘 장부 등록 알림',
+				body: [entry.purpose, entry.Buildings.address, amountText].filter(Boolean).join(' · ') || '오늘 등록된 장부 내역이 있습니다.',
+				url: '/ledger',
+			})
+		);
 	}
 
 	if (staleEndpoints.length > 0) {
@@ -226,7 +285,13 @@ export async function GET(request) {
 	}
 
 	return new NextResponse(
-		JSON.stringify({ message: '발송 완료', scheduleCount: schedules.length, subscriptionCount: subscriptions.length, sent }),
+		JSON.stringify({
+			message: '발송 완료',
+			scheduleCount: schedules?.length ?? 0,
+			ledgerCount: ledgerEntries?.length ?? 0,
+			subscriptionCount: subscriptions.length,
+			sent,
+		}),
 		{ status: 200 }
 	);
 }
