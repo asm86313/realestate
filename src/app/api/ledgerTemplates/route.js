@@ -56,6 +56,42 @@ export async function POST(request) {
 		}
 	}
 
+	// reportId(카테고리로 고른 요약표)를 넣는 경우, 같은 건물 것인지 확인
+	if (template.reportId) {
+		const { data: rpt, error: rptError } = await supabaseAdmin
+			.from('LedgerReports')
+			.select('id')
+			.eq('id', template.reportId)
+			.eq('bldId', template.bldId)
+			.maybeSingle();
+
+		if (rptError) {
+			console.error('요약표 확인 실패:', rptError);
+			return new NextResponse(JSON.stringify({ message: '요약표 확인에 실패했습니다.' }), { status: 500 });
+		}
+		if (!rpt) {
+			return new NextResponse(JSON.stringify({ message: '유효하지 않은 요약표입니다.' }), { status: 400 });
+		}
+	}
+
+	// 통장도 같은 건물 것인지 확인
+	if (template.bankAccountId) {
+		const { data: acc, error: accError } = await supabaseAdmin
+			.from('BankAccounts')
+			.select('id')
+			.eq('id', template.bankAccountId)
+			.eq('bldId', template.bldId)
+			.maybeSingle();
+
+		if (accError) {
+			console.error('통장 확인 실패:', accError);
+			return new NextResponse(JSON.stringify({ message: '통장 확인에 실패했습니다.' }), { status: 500 });
+		}
+		if (!acc) {
+			return new NextResponse(JSON.stringify({ message: '유효하지 않은 통장입니다.' }), { status: 400 });
+		}
+	}
+
 	const payload = {
 		ownerId,
 		bldId: template.bldId,
@@ -65,7 +101,10 @@ export async function POST(request) {
 		interestRate: template.interestRate === '' || template.interestRate == null ? null : Number(template.interestRate),
 		interestAmount: template.interestAmount === '' || template.interestAmount == null ? null : Number(template.interestAmount),
 		borrowedDays: template.borrowedDays === '' || template.borrowedDays == null ? null : Number(template.borrowedDays),
+		interestAuto: template.interestAuto ?? false,
 		notes: template.notes || null,
+		bankAccountId: template.bankAccountId || null,
+		reportId: template.reportId || null,
 		dayOfMonth: Number(template.dayOfMonth),
 		active: template.active ?? true,
 		skipHoliday: template.skipHoliday ?? false,

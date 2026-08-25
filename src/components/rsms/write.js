@@ -14,7 +14,6 @@ import { toast } from "sonner"
 
 import Rentlist from '@/components/rentlist/rentlist';
 import BldInfo from '@/components/bldinfo/bldinfo';
-import Ledger from '@/components/rsms/ledger';
 
 export default function Write() {
 	const router = useRouter();
@@ -158,17 +157,6 @@ export default function Write() {
 						<Rentlist setRentList={setRentList} contractList={rentList}/>
 					</CardContent>
 				</Card>
-
-				{isEditMode && id && (
-					<Card>
-						<CardHeader>
-							<CardTitle className="text-base">회계 장부</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<Ledger bldId={id}/>
-						</CardContent>
-					</Card>
-				)}
 			</div>
 
 			{/* 하단 고정 액션바 */}

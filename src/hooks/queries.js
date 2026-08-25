@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getBldInfo, getSchedule, getLedger, getLedgerByDate, getScheduleTemplates, getLedgerTemplates } from '@/utils/core';
+import { getBldInfo, getSchedule, getLedger, getLedgerByDate, getLedgerReports, getBankAccounts, getScheduleTemplates, getLedgerTemplates } from '@/utils/core';
 
 // 로딩 중에도 data가 매 렌더마다 새 배열/객체로 바뀌지 않도록 참조를 고정해둔다.
 // (그렇지 않으면 이 값을 참조하는 useEffect가 렌더마다 새로 트리거되어
@@ -10,6 +10,8 @@ const EMPTY_BLD_INFO = { Buildings: [], Contracts: [] };
 const EMPTY_SCHEDULE = [];
 const EMPTY_LEDGER = [];
 const EMPTY_TEMPLATES = [];
+const EMPTY_LEDGER_REPORTS = [];
+const EMPTY_BANK_ACCOUNTS = [];
 
 // QueryClient 기본 staleTime(30초, layout.js)이 이 initialData placeholder에도
 // 그대로 적용되면, 처음 페이지에 들어왔을 때도 "30초간 신선한 데이터"로 오인해서
@@ -53,6 +55,34 @@ export function useLedgerQuery(bldId) {
 			return res?.data?.ledger ?? EMPTY_LEDGER;
 		},
 		initialData: EMPTY_LEDGER,
+		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
+		enabled: !!bldId,
+	});
+}
+
+// 특정 건물의 저장된 커스텀 회계 요약표 목록
+export function useLedgerReportsQuery(bldId) {
+	return useQuery({
+		queryKey: ['ledgerReports', bldId],
+		queryFn: async () => {
+			const res = await getLedgerReports(bldId);
+			return res?.data?.reports ?? EMPTY_LEDGER_REPORTS;
+		},
+		initialData: EMPTY_LEDGER_REPORTS,
+		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
+		enabled: !!bldId,
+	});
+}
+
+// 건물별 통장 목록 (카테고리/요약표와 같은 단위)
+export function useBankAccountsQuery(bldId) {
+	return useQuery({
+		queryKey: ['bankAccounts', bldId],
+		queryFn: async () => {
+			const res = await getBankAccounts(bldId);
+			return res?.data?.accounts ?? EMPTY_BANK_ACCOUNTS;
+		},
+		initialData: EMPTY_BANK_ACCOUNTS,
 		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
 		enabled: !!bldId,
 	});

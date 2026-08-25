@@ -107,7 +107,10 @@ async function generateRecurringLedgerEntries(ctx, getHolidaySet) {
 			interestRate: tpl.interestRate,
 			interestAmount: tpl.interestAmount,
 			borrowedDays: tpl.borrowedDays,
+			interestAuto: tpl.interestAuto,
 			notes: tpl.notes,
+			reportId: tpl.reportId,
+			bankAccountId: tpl.bankAccountId,
 		});
 
 		if (insertError) {
