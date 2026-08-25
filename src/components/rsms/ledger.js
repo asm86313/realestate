@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, CheckSquare, ChevronLeft, ChevronRight, ClipboardPaste, Landmark, Plus, Wallet } from 'lucide-react';
+import { CalendarClock, CheckSquare, ChevronLeft, ChevronRight, ClipboardPaste, Download, Landmark, Plus, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
 
@@ -14,6 +14,7 @@ import koLocale from '@fullcalendar/core/locales/ko';
 import { regLedger, delLedger, saveLedgerReport, saveBankAccount } from '@/utils/core';
 import { useLedgerQuery, useLedgerReportsQuery, useBankAccountsQuery } from '@/hooks/queries';
 import { parseBulkLedgerText } from '@/utils/ledgerImport';
+import { downloadLedgerCsv } from '@/utils/ledgerExport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -470,6 +471,21 @@ export default function Ledger({ bldId }) {
 	}, [displayedLedger, reportTitleById]);
 	const displayedTotal = displayedLedger.reduce((sum, r) => sum + Number(r.income || 0) - Number(r.expense || 0), 0);
 
+	// 지금 화면에 보이는 목록(전체/연도별/월별 + 통장 필터가 적용된 상태) 그대로 CSV로 내려받는다.
+	const onExportCsv = useCallback(() => {
+		if (displayedLedger.length === 0) {
+			toast.warning('내려받을 내역이 없습니다.');
+			return;
+		}
+		const accountLabel = selectedAccountId ? accountNameById.get(selectedAccountId) || '통장' : '전체통장';
+		const periodPart = viewMode === 'month' && selectedDate ? selectedDate : periodLabel;
+		downloadLedgerCsv(
+			displayedLedger,
+			{ reportTitleById, accountNameById },
+			`장부_${accountLabel}_${periodPart}.csv`
+		);
+	}, [displayedLedger, reportTitleById, accountNameById, selectedAccountId, viewMode, selectedDate, periodLabel]);
+
 	const renderLedgerRow = (row) => (
 		<div
 			key={row.id}
@@ -692,6 +708,9 @@ export default function Ledger({ bldId }) {
 				</Button>
 				<Button type="button" variant="outline" className="flex-1 gap-1.5" onClick={() => setBulkOpen(true)}>
 					<ClipboardPaste className="size-4" /> 엑셀 붙여넣기
+				</Button>
+				<Button type="button" variant="outline" className="flex-1 gap-1.5" onClick={onExportCsv}>
+					<Download className="size-4" /> 엑셀로 보기
 				</Button>
 			</div>
 
