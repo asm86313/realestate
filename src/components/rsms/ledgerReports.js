@@ -2,13 +2,13 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowUpDown, FileText, Folder, Landmark, Plus, Search, X } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronUp, FileText, Folder, Landmark, Plus, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
 
-import { saveLedgerReport, delLedgerReport } from '@/utils/core';
+import { saveLedgerReport, delLedgerReport, reorderLedgerReports, reorderLedgerReportGroups } from '@/utils/core';
 import { ledgerRowAmount, liveInterestAmount } from '@/utils/ledgerAmount';
-import { useLedgerReportsQuery, useBankAccountsQuery } from '@/hooks/queries';
+import { useLedgerReportsQuery, useLedgerReportGroupsQuery, useBankAccountsQuery } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,13 +24,40 @@ function toWon(n) {
 
 const emptyDraft = { id: null, title: '', groupNames: [], items: [] };
 
+// 그룹/요약표를 위아래로 옮기는 작은 버튼 쌍. 부모 행이 클릭하면 상세보기가 열리게
+// 되어있어서, 여기 클릭은 stopPropagation으로 그 클릭이 부모까지 안 번지게 막는다.
+function MoveButtons({ disabledUp, disabledDown, onUp, onDown }) {
+	return (
+		<div className="flex shrink-0 flex-col" onClick={(e) => e.stopPropagation()}>
+			<button
+				type="button"
+				className="rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
+				disabled={disabledUp}
+				onClick={onUp}
+			>
+				<ChevronUp className="size-3.5" />
+			</button>
+			<button
+				type="button"
+				className="rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
+				disabled={disabledDown}
+				onClick={onDown}
+			>
+				<ChevronDown className="size-3.5" />
+			</button>
+		</div>
+	);
+}
+
 // 전체 내역 중 원하는 것만 검색해서 고르거나, 직접 입력한 줄을 섞어서
 // "총 비용"처럼 이름 붙은 요약표로 저장해두는 기능. 회계 > 전체 탭에서만 쓰인다.
 export default function LedgerReports({ bldId, ledger }) {
 	const queryClient = useQueryClient();
 	const { data: reports = [] } = useLedgerReportsQuery(bldId);
+	const { data: reportGroups = [] } = useLedgerReportGroupsQuery(bldId);
 	const { data: accounts = [] } = useBankAccountsQuery(bldId);
 	const accountNameById = useMemo(() => new Map(accounts.map((a) => [a.id, a.name])), [accounts]);
+	const groupSortOrderByName = useMemo(() => new Map(reportGroups.map((g) => [g.name, g.sortOrder])), [reportGroups]);
 
 	const [isBuilderOpen, setBuilderOpen] = useState(false);
 	const [draft, setDraft] = useState(emptyDraft);
@@ -45,6 +72,10 @@ export default function LedgerReports({ bldId, ledger }) {
 
 	const invalidate = useCallback(() => {
 		queryClient.invalidateQueries({ queryKey: ['ledgerReports', bldId] });
+	}, [queryClient, bldId]);
+
+	const invalidateGroups = useCallback(() => {
+		queryClient.invalidateQueries({ queryKey: ['ledgerReportGroups', bldId] });
 	}, [queryClient, bldId]);
 
 	// 요약표 = 카테고리라, 이 요약표를 고른 내역(reportIds)은 수동으로 안 골라도 자동으로 잡힌다.
@@ -125,7 +156,10 @@ export default function LedgerReports({ bldId, ledger }) {
 	// 그룹도 이제 요약표 하나가 여러 개에 동시에 속할 수 있다. 자기가 속한 그룹마다 한 번씩
 	// 그 그룹 카드에 나타난다(같은 요약표가 여러 그룹 합계에 동시에 들어갈 수 있다는 뜻).
 	// 그룹이 하나도 없는 요약표는 예전처럼 개별로 보여준다.
+	// 그룹 카드 순서는 LedgerReportGroups.sortOrder로, 그룹 안/개별 요약표 순서는
+	// LedgerReports.sortOrder로 정렬한다 - 둘 다 사용자가 위/아래 버튼으로 직접 조정 가능.
 	const { groupedList, standaloneList } = useMemo(() => {
+		const bySortOrder = (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
 		const groups = new Map();
 		const standalone = [];
 		for (const r of reportsWithLive) {
@@ -140,13 +174,57 @@ export default function LedgerReports({ bldId, ledger }) {
 				groups.set(name, list);
 			}
 		}
-		const groupedList = Array.from(groups.entries()).map(([groupName, list]) => ({
-			groupName,
-			reports: list,
-			total: list.reduce((sum, r) => sum + r.total, 0),
-		}));
-		return { groupedList, standaloneList: standalone };
-	}, [reportsWithLive]);
+		const groupedList = Array.from(groups.entries())
+			.map(([groupName, list]) => ({
+				groupName,
+				// 아직 LedgerReportGroups에 순서가 없는 그룹(생성 직후 등)은 맨 뒤로 보낸다.
+				sortOrder: groupSortOrderByName.has(groupName) ? groupSortOrderByName.get(groupName) : Infinity,
+				reports: list.slice().sort(bySortOrder),
+				total: list.reduce((sum, r) => sum + r.total, 0),
+			}))
+			.sort(bySortOrder);
+		return { groupedList, standaloneList: standalone.slice().sort(bySortOrder) };
+	}, [reportsWithLive, groupSortOrderByName]);
+
+	// 요약표 하나(그룹 카드 안이든 개별 목록이든)를 같은 목록 안에서 위/아래로 옮긴다.
+	const onMoveReport = useCallback(async (list, index, direction) => {
+		const otherIndex = index + direction;
+		if (otherIndex < 0 || otherIndex >= list.length) return;
+		const a = list[index];
+		const b = list[otherIndex];
+		const res = await reorderLedgerReports(bldId, [
+			{ id: a.id, sortOrder: b.sortOrder },
+			{ id: b.id, sortOrder: a.sortOrder },
+		]);
+		if (!res) {
+			toast.error('순서 저장에 실패했습니다.');
+			return;
+		}
+		invalidate();
+	}, [bldId, invalidate]);
+
+	// 그룹 카드 자체를 위/아래로 옮긴다.
+	const onMoveGroup = useCallback(async (index, direction) => {
+		const otherIndex = index + direction;
+		if (otherIndex < 0 || otherIndex >= groupedList.length) return;
+		const a = groupedList[index];
+		const b = groupedList[otherIndex];
+		// 방금 생겨서 아직 순서가 안 매겨진 그룹(드물게 목록이 새로고침되기 전)은
+		// 잠시 후 다시 시도해달라고 안내한다 - 유효하지 않은 순서값을 저장하는 걸 막는다.
+		if (!Number.isFinite(a.sortOrder) || !Number.isFinite(b.sortOrder)) {
+			toast.warning('그룹 목록을 새로고침한 뒤 다시 시도해주세요.');
+			return;
+		}
+		const res = await reorderLedgerReportGroups(bldId, [
+			{ name: a.groupName, sortOrder: b.sortOrder },
+			{ name: b.groupName, sortOrder: a.sortOrder },
+		]);
+		if (!res) {
+			toast.error('순서 저장에 실패했습니다.');
+			return;
+		}
+		invalidateGroups();
+	}, [bldId, groupedList, invalidateGroups]);
 
 	// 그룹 입력 자동완성용 목록.
 	const groupOptions = useMemo(
@@ -251,7 +329,8 @@ export default function LedgerReports({ bldId, ledger }) {
 		toast.success('요약표가 저장되었습니다.');
 		setBuilderOpen(false);
 		invalidate();
-	}, [draft, bldId, invalidate]);
+		invalidateGroups();
+	}, [draft, bldId, invalidate, invalidateGroups]);
 
 	const onDeleteReport = useCallback(async (id) => {
 		const res = await delLedgerReport(id);
@@ -283,19 +362,27 @@ export default function LedgerReports({ bldId, ledger }) {
 				</Card>
 			) : (
 				<div className="flex flex-col gap-2">
-					{groupedList.map((g) => (
+					{groupedList.map((g, groupIndex) => (
 						<Card key={g.groupName}>
 							<CardContent className="flex items-center justify-between gap-3 border-b p-3 sm:p-3">
 								<div className="flex items-center gap-1.5 text-sm font-semibold">
 									<Folder className="size-4 text-muted-foreground" /> {g.groupName}
 								</div>
-								<p className="text-sm font-semibold">{toWon(g.total)}원</p>
+								<div className="flex items-center gap-1.5">
+									<p className="text-sm font-semibold">{toWon(g.total)}원</p>
+									<MoveButtons
+										disabledUp={groupIndex === 0}
+										disabledDown={groupIndex === groupedList.length - 1}
+										onUp={() => onMoveGroup(groupIndex, -1)}
+										onDown={() => onMoveGroup(groupIndex, 1)}
+									/>
+								</div>
 							</CardContent>
 							<CardContent className="divide-y p-0 sm:p-0">
-								{g.reports.map((r) => (
+								{g.reports.map((r, index) => (
 									<div
 										key={r.id}
-										className="flex cursor-pointer items-center justify-between gap-3 py-3 pl-8 pr-4 transition-colors hover:bg-accent active:bg-accent"
+										className="flex cursor-pointer items-center justify-between gap-2 py-3 pl-8 pr-4 transition-colors hover:bg-accent active:bg-accent"
 										onClick={() => setDetailReportId(r.id)}
 									>
 										<div className="min-w-0 flex-1">
@@ -303,6 +390,12 @@ export default function LedgerReports({ bldId, ledger }) {
 											<p className="text-xs text-muted-foreground">{dayjs(r.createdAt).format('YYYY.M.D')} · {r.allItems.length}건</p>
 										</div>
 										<p className="shrink-0 text-sm font-semibold">{toWon(r.total)}원</p>
+										<MoveButtons
+											disabledUp={index === 0}
+											disabledDown={index === g.reports.length - 1}
+											onUp={() => onMoveReport(g.reports, index, -1)}
+											onDown={() => onMoveReport(g.reports, index, 1)}
+										/>
 									</div>
 								))}
 							</CardContent>
@@ -312,10 +405,10 @@ export default function LedgerReports({ bldId, ledger }) {
 					{standaloneList.length > 0 && (
 						<Card>
 							<CardContent className="divide-y p-0 sm:p-0">
-								{standaloneList.map((r) => (
+								{standaloneList.map((r, index) => (
 									<div
 										key={r.id}
-										className="flex cursor-pointer items-center justify-between gap-3 p-4 transition-colors hover:bg-accent active:bg-accent"
+										className="flex cursor-pointer items-center justify-between gap-2 p-4 transition-colors hover:bg-accent active:bg-accent"
 										onClick={() => setDetailReportId(r.id)}
 									>
 										<div className="min-w-0 flex-1">
@@ -323,6 +416,12 @@ export default function LedgerReports({ bldId, ledger }) {
 											<p className="text-xs text-muted-foreground">{dayjs(r.createdAt).format('YYYY.M.D')} · {r.allItems.length}건</p>
 										</div>
 										<p className="shrink-0 text-sm font-semibold">{toWon(r.total)}원</p>
+										<MoveButtons
+											disabledUp={index === 0}
+											disabledDown={index === standaloneList.length - 1}
+											onUp={() => onMoveReport(standaloneList, index, -1)}
+											onDown={() => onMoveReport(standaloneList, index, 1)}
+										/>
 									</div>
 								))}
 							</CardContent>

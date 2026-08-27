@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getBldInfo, getSchedule, getLedger, getLedgerByDate, getLedgerReports, getBankAccounts, getScheduleTemplates, getLedgerTemplates } from '@/utils/core';
+import { getBldInfo, getSchedule, getLedger, getLedgerByDate, getLedgerReports, getLedgerReportGroups, getBankAccounts, getScheduleTemplates, getLedgerTemplates } from '@/utils/core';
 
 // 로딩 중에도 data가 매 렌더마다 새 배열/객체로 바뀌지 않도록 참조를 고정해둔다.
 // (그렇지 않으면 이 값을 참조하는 useEffect가 렌더마다 새로 트리거되어
@@ -11,6 +11,7 @@ const EMPTY_SCHEDULE = [];
 const EMPTY_LEDGER = [];
 const EMPTY_TEMPLATES = [];
 const EMPTY_LEDGER_REPORTS = [];
+const EMPTY_LEDGER_REPORT_GROUPS = [];
 const EMPTY_BANK_ACCOUNTS = [];
 
 // QueryClient 기본 staleTime(30초, layout.js)이 이 initialData placeholder에도
@@ -69,6 +70,20 @@ export function useLedgerReportsQuery(bldId) {
 			return res?.data?.reports ?? EMPTY_LEDGER_REPORTS;
 		},
 		initialData: EMPTY_LEDGER_REPORTS,
+		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
+		enabled: !!bldId,
+	});
+}
+
+// 특정 건물의 요약표 그룹 이름 + 표시 순서 목록
+export function useLedgerReportGroupsQuery(bldId) {
+	return useQuery({
+		queryKey: ['ledgerReportGroups', bldId],
+		queryFn: async () => {
+			const res = await getLedgerReportGroups(bldId);
+			return res?.data?.groups ?? EMPTY_LEDGER_REPORT_GROUPS;
+		},
+		initialData: EMPTY_LEDGER_REPORT_GROUPS,
 		initialDataUpdatedAt: INITIAL_DATA_UPDATED_AT,
 		enabled: !!bldId,
 	});
