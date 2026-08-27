@@ -246,6 +246,50 @@ export const delLedgerReport = async (id) => {
     }
 };
 
+export const reorderLedgerReports = async (bldId, updates) => {
+    try {
+        const res = await apiClient.post('/api/ledgerReports/reorder', {
+            bldId,
+            updates,
+        });
+
+        if (res.status === 200) {
+            return res;
+        }
+    } catch (error) {
+        console.error('❌ API 요청 실패:', error);
+    }
+};
+
+export const getLedgerReportGroups = async (bldId) => {
+    try {
+        const res = await apiClient.get('/api/ledgerReportGroups', {
+            params: { bldId },
+        });
+
+        if (res.status === 200) {
+            return res;
+        }
+    } catch (error) {
+        console.error('❌ API 요청 실패:', error);
+    }
+};
+
+export const reorderLedgerReportGroups = async (bldId, updates) => {
+    try {
+        const res = await apiClient.post('/api/ledgerReportGroups', {
+            bldId,
+            updates,
+        });
+
+        if (res.status === 200) {
+            return res;
+        }
+    } catch (error) {
+        console.error('❌ API 요청 실패:', error);
+    }
+};
+
 export const getBankAccounts = async (bldId) => {
     try {
         const res = await apiClient.get('/api/bankAccounts', {

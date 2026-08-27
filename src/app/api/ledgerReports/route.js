@@ -40,7 +40,7 @@ export async function GET(request) {
 		.from('LedgerReports')
 		.select('*, items:LedgerReportItems(*)')
 		.eq('bldId', bldId)
-		.order('createdAt', { ascending: false });
+		.order('sortOrder', { ascending: true });
 
 	if (error) {
 		console.error('회계 요약표 조회 실패:', error);
@@ -157,9 +157,20 @@ export async function POST(request) {
 				return new NextResponse(JSON.stringify({ message: '저장에 실패했습니다.' }), { status: 500 });
 			}
 		} else {
+			// 새로 만든 요약표는 목록 맨 위에 나오게 한다(예전 "최근 등록순" 느낌 유지) -
+			// 지금 이 건물에서 제일 작은 sortOrder보다 하나 작은 값을 준다.
+			const { data: minRow } = await supabaseAdmin
+				.from('LedgerReports')
+				.select('sortOrder')
+				.eq('bldId', report.bldId)
+				.order('sortOrder', { ascending: true })
+				.limit(1)
+				.maybeSingle();
+			const newSortOrder = (minRow?.sortOrder ?? 1) - 1;
+
 			const { data: inserted, error: insertError } = await supabaseAdmin
 				.from('LedgerReports')
-				.insert({ bldId: report.bldId, title, groupName, groupNames })
+				.insert({ bldId: report.bldId, title, groupName, groupNames, sortOrder: newSortOrder })
 				.select('id')
 				.single();
 
@@ -169,6 +180,41 @@ export async function POST(request) {
 			}
 			reportId = inserted.id;
 			isExistingReport = false;
+		}
+	}
+
+	// 이번에 새로 쓰인 그룹 이름이 있으면, 순서를 매길 수 있도록 LedgerReportGroups에도
+	// 자동으로 만들어둔다(이미 있으면 건드리지 않는다) - 목록 맨 뒤에 이어붙인다.
+	// 그룹은 순서 표시용 부가 정보라, 실패해도 요약표 저장 자체는 막지 않는다.
+	if (groupNames.length > 0) {
+		const { data: existingGroups, error: groupsFetchError } = await supabaseAdmin
+			.from('LedgerReportGroups')
+			.select('name')
+			.eq('bldId', report.bldId)
+			.in('name', groupNames);
+
+		if (groupsFetchError) {
+			console.error('그룹 조회 실패:', groupsFetchError);
+		} else {
+			const existingNames = new Set((existingGroups || []).map((g) => g.name));
+			const missingNames = groupNames.filter((name) => !existingNames.has(name));
+
+			if (missingNames.length > 0) {
+				const { data: maxRow } = await supabaseAdmin
+					.from('LedgerReportGroups')
+					.select('sortOrder')
+					.eq('bldId', report.bldId)
+					.order('sortOrder', { ascending: false })
+					.limit(1)
+					.maybeSingle();
+				let nextOrder = (maxRow?.sortOrder ?? -1) + 1;
+				const groupPayload = missingNames.map((name) => ({ bldId: report.bldId, name, sortOrder: nextOrder++ }));
+
+				const { error: groupInsertError } = await supabaseAdmin.from('LedgerReportGroups').insert(groupPayload);
+				if (groupInsertError) {
+					console.error('그룹 생성 실패:', groupInsertError);
+				}
+			}
 		}
 	}
 
