@@ -69,11 +69,11 @@ export default function LedgerReports({ bldId, ledger }) {
 	const [detailReportId, setDetailReportId] = useState(null);
 	// 상세보기 안 내역 정렬: 기본은 최신 날짜부터(내림차순). 날짜가 없는 줄(직접 입력)은 맨 뒤로 보낸다.
 	const [itemSortOrder, setItemSortOrder] = useState('desc');
-	// 그룹 카드 접기/펼치기. 기본은 전부 펼친 상태(빈 Set)이고, 접은 그룹의 이름만 담아둔다.
-	const [collapsedGroups, setCollapsedGroups] = useState(() => new Set());
+	// 그룹 카드 접기/펼치기. 기본은 전부 접힌 상태(빈 Set)이고, 펼친 그룹의 이름만 담아둔다.
+	const [expandedGroups, setExpandedGroups] = useState(() => new Set());
 
 	const toggleGroupCollapsed = useCallback((groupName) => {
-		setCollapsedGroups((prev) => {
+		setExpandedGroups((prev) => {
 			const next = new Set(prev);
 			if (next.has(groupName)) next.delete(groupName);
 			else next.add(groupName);
@@ -374,7 +374,7 @@ export default function LedgerReports({ bldId, ledger }) {
 			) : (
 				<div className="flex flex-col gap-2">
 					{groupedList.map((g, groupIndex) => {
-						const isCollapsed = collapsedGroups.has(g.groupName);
+						const isCollapsed = !expandedGroups.has(g.groupName);
 						return (
 							<Card key={g.groupName}>
 								<CardContent
