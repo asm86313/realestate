@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowUpDown, ChevronDown, ChevronUp, FileText, Folder, Landmark, Plus, Search, X } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronRight, ChevronUp, FileText, Folder, Landmark, Plus, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
 
@@ -69,6 +69,17 @@ export default function LedgerReports({ bldId, ledger }) {
 	const [detailReportId, setDetailReportId] = useState(null);
 	// 상세보기 안 내역 정렬: 기본은 최신 날짜부터(내림차순). 날짜가 없는 줄(직접 입력)은 맨 뒤로 보낸다.
 	const [itemSortOrder, setItemSortOrder] = useState('desc');
+	// 그룹 카드 접기/펼치기. 기본은 전부 펼친 상태(빈 Set)이고, 접은 그룹의 이름만 담아둔다.
+	const [collapsedGroups, setCollapsedGroups] = useState(() => new Set());
+
+	const toggleGroupCollapsed = useCallback((groupName) => {
+		setCollapsedGroups((prev) => {
+			const next = new Set(prev);
+			if (next.has(groupName)) next.delete(groupName);
+			else next.add(groupName);
+			return next;
+		});
+	}, []);
 
 	const invalidate = useCallback(() => {
 		queryClient.invalidateQueries({ queryKey: ['ledgerReports', bldId] });
@@ -362,45 +373,54 @@ export default function LedgerReports({ bldId, ledger }) {
 				</Card>
 			) : (
 				<div className="flex flex-col gap-2">
-					{groupedList.map((g, groupIndex) => (
-						<Card key={g.groupName}>
-							<CardContent className="flex items-center justify-between gap-3 border-b p-3 sm:p-3">
-								<div className="flex items-center gap-1.5 text-sm font-semibold">
-									<Folder className="size-4 text-muted-foreground" /> {g.groupName}
-								</div>
-								<div className="flex items-center gap-1.5">
-									<p className="text-sm font-semibold">{toWon(g.total)}원</p>
-									<MoveButtons
-										disabledUp={groupIndex === 0}
-										disabledDown={groupIndex === groupedList.length - 1}
-										onUp={() => onMoveGroup(groupIndex, -1)}
-										onDown={() => onMoveGroup(groupIndex, 1)}
-									/>
-								</div>
-							</CardContent>
-							<CardContent className="divide-y p-0 sm:p-0">
-								{g.reports.map((r, index) => (
-									<div
-										key={r.id}
-										className="flex cursor-pointer items-center justify-between gap-2 py-3 pl-8 pr-4 transition-colors hover:bg-accent active:bg-accent"
-										onClick={() => setDetailReportId(r.id)}
-									>
-										<div className="min-w-0 flex-1">
-											<p className="truncate text-sm font-medium">{r.title}</p>
-											<p className="text-xs text-muted-foreground">{dayjs(r.createdAt).format('YYYY.M.D')} · {r.allItems.length}건</p>
-										</div>
-										<p className="shrink-0 text-sm font-semibold">{toWon(r.total)}원</p>
+					{groupedList.map((g, groupIndex) => {
+						const isCollapsed = collapsedGroups.has(g.groupName);
+						return (
+							<Card key={g.groupName}>
+								<CardContent
+									className={`flex cursor-pointer items-center justify-between gap-3 p-3 transition-colors hover:bg-accent sm:p-3 ${isCollapsed ? '' : 'border-b'}`}
+									onClick={() => toggleGroupCollapsed(g.groupName)}
+								>
+									<div className="flex items-center gap-1.5 text-sm font-semibold">
+										<ChevronRight className={`size-4 shrink-0 text-muted-foreground transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+										<Folder className="size-4 shrink-0 text-muted-foreground" /> {g.groupName}
+									</div>
+									<div className="flex items-center gap-1.5">
+										<p className="text-sm font-semibold">{toWon(g.total)}원</p>
 										<MoveButtons
-											disabledUp={index === 0}
-											disabledDown={index === g.reports.length - 1}
-											onUp={() => onMoveReport(g.reports, index, -1)}
-											onDown={() => onMoveReport(g.reports, index, 1)}
+											disabledUp={groupIndex === 0}
+											disabledDown={groupIndex === groupedList.length - 1}
+											onUp={() => onMoveGroup(groupIndex, -1)}
+											onDown={() => onMoveGroup(groupIndex, 1)}
 										/>
 									</div>
-								))}
-							</CardContent>
-						</Card>
-					))}
+								</CardContent>
+								{!isCollapsed && (
+									<CardContent className="divide-y p-0 sm:p-0">
+										{g.reports.map((r, index) => (
+											<div
+												key={r.id}
+												className="flex cursor-pointer items-center justify-between gap-2 py-3 pl-8 pr-4 transition-colors hover:bg-accent active:bg-accent"
+												onClick={() => setDetailReportId(r.id)}
+											>
+												<div className="min-w-0 flex-1">
+													<p className="truncate text-sm font-medium">{r.title}</p>
+													<p className="text-xs text-muted-foreground">{dayjs(r.createdAt).format('YYYY.M.D')} · {r.allItems.length}건</p>
+												</div>
+												<p className="shrink-0 text-sm font-semibold">{toWon(r.total)}원</p>
+												<MoveButtons
+													disabledUp={index === 0}
+													disabledDown={index === g.reports.length - 1}
+													onUp={() => onMoveReport(g.reports, index, -1)}
+													onDown={() => onMoveReport(g.reports, index, 1)}
+												/>
+											</div>
+										))}
+									</CardContent>
+								)}
+							</Card>
+						);
+					})}
 
 					{standaloneList.length > 0 && (
 						<Card>
