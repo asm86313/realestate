@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, CheckSquare, ChevronLeft, ChevronRight, ClipboardPaste, Download, Landmark, Plus, Wallet } from 'lucide-react';
+import { ArrowUpDown, CalendarClock, CheckSquare, ChevronLeft, ChevronRight, ClipboardPaste, Download, Landmark, Plus, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
 
@@ -77,6 +77,8 @@ export default function Ledger({ bldId }) {
 	const [selectedAccountId, setSelectedAccountId] = useState(null);
 	// 카테고리 필터: 목록을 나누지 않고, 대신 이걸로 고른 카테고리 내역만 보여준다.
 	const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORY_FILTER);
+	// 목록 정렬: 기본은 최신 날짜부터(내림차순). 버튼으로 오래된순과 토글한다.
+	const [sortOrder, setSortOrder] = useState('desc');
 	const [isAddAccountOpen, setAddAccountOpen] = useState(false);
 	const [newAccountName, setNewAccountName] = useState('');
 	const [isOpen, setOpen] = useState(false);
@@ -460,12 +462,23 @@ export default function Ledger({ bldId }) {
 	const accountNameById = useMemo(() => new Map(accounts.map((a) => [a.id, a.name])), [accounts]);
 
 	// 카테고리 필터: "카테고리 없음"/특정 카테고리를 고르면 목록을 그걸로만 좁힌다. 안 나누고 뱃지로만 표시.
+	// 그 다음 날짜 기준으로 정렬한다 - 기본은 최신순(내림차순), 버튼으로 오래된순과 토글.
+	// 날짜가 같으면 등록 순서(id)로 같은 방향으로 묶어서 매번 순서가 흔들리지 않게 한다.
 	const visibleLedger = useMemo(() => {
-		if (categoryFilter === ALL_CATEGORY_FILTER) return displayedLedger;
-		if (categoryFilter === NO_CATEGORY_FILTER) return displayedLedger.filter((row) => (row.reportIds || []).length === 0);
-		const reportId = Number(categoryFilter);
-		return displayedLedger.filter((row) => (row.reportIds || []).includes(reportId));
-	}, [displayedLedger, categoryFilter]);
+		let rows = displayedLedger;
+		if (categoryFilter === NO_CATEGORY_FILTER) {
+			rows = rows.filter((row) => (row.reportIds || []).length === 0);
+		} else if (categoryFilter !== ALL_CATEGORY_FILTER) {
+			const reportId = Number(categoryFilter);
+			rows = rows.filter((row) => (row.reportIds || []).includes(reportId));
+		}
+		const dir = sortOrder === 'desc' ? -1 : 1;
+		return rows.slice().sort((a, b) => {
+			const dateCmp = (a.date || '').localeCompare(b.date || '');
+			if (dateCmp !== 0) return dateCmp * dir;
+			return ((a.id || 0) - (b.id || 0)) * dir;
+		});
+	}, [displayedLedger, categoryFilter, sortOrder]);
 	// 지금 화면에 보이는 목록(전체/연도별/월별 + 통장/카테고리 필터가 적용된 상태) 그대로 CSV로 내려받는다.
 	const onExportCsv = useCallback(() => {
 		if (visibleLedger.length === 0) {
@@ -672,20 +685,31 @@ export default function Ledger({ bldId }) {
 				</Card>
 			)}
 
-			<Select value={categoryFilter} onValueChange={setCategoryFilter}>
-				<SelectTrigger>
-					<SelectValue placeholder="카테고리 선택" />
-				</SelectTrigger>
-				<SelectContent>
-					<SelectGroup>
-						<SelectItem value={ALL_CATEGORY_FILTER}>전체 카테고리</SelectItem>
-						<SelectItem value={NO_CATEGORY_FILTER}>카테고리 없음</SelectItem>
-						{reports.map((r) => (
-							<SelectItem value={String(r.id)} key={r.id}>{r.title}</SelectItem>
-						))}
-					</SelectGroup>
-				</SelectContent>
-			</Select>
+			<div className="flex items-center gap-2">
+				<Select value={categoryFilter} onValueChange={setCategoryFilter}>
+					<SelectTrigger className="flex-1">
+						<SelectValue placeholder="카테고리 선택" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectGroup>
+							<SelectItem value={ALL_CATEGORY_FILTER}>전체 카테고리</SelectItem>
+							<SelectItem value={NO_CATEGORY_FILTER}>카테고리 없음</SelectItem>
+							{reports.map((r) => (
+								<SelectItem value={String(r.id)} key={r.id}>{r.title}</SelectItem>
+							))}
+						</SelectGroup>
+					</SelectContent>
+				</Select>
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					className="shrink-0 gap-1.5"
+					onClick={() => setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+				>
+					<ArrowUpDown className="size-4" /> {sortOrder === 'desc' ? '최신순' : '오래된순'}
+				</Button>
+			</div>
 
 			{visibleLedger.length === 0 ? (
 				<Card>
