@@ -90,7 +90,17 @@ export async function POST(request) {
 	}
 
 	const title = report.title.trim();
-	const groupName = report.groupName?.trim() || null;
+	// 그룹도 이제 요약표 하나가 여러 개에 동시에 속할 수 있다. groupNames(배열)를 기본으로 받고,
+	// 옛 방식으로 groupName(단일)만 보내는 곳이 있으면 그것도 합쳐준다.
+	const groupNames = Array.from(
+		new Set(
+			[...(Array.isArray(report.groupNames) ? report.groupNames : []), ...(report.groupName ? [report.groupName] : [])]
+				.map((g) => String(g || '').trim())
+				.filter(Boolean)
+		)
+	);
+	// 옛 단일 groupName 컬럼도 참고용으로 첫 번째 그룹으로 채워둔다(화면은 이제 안 읽음).
+	const groupName = groupNames[0] || null;
 	let reportId;
 	let isExistingReport;
 
@@ -111,7 +121,7 @@ export async function POST(request) {
 			return new NextResponse(JSON.stringify({ message: '권한이 없습니다.' }), { status: 403 });
 		}
 
-		const { error: updateError } = await supabaseAdmin.from('LedgerReports').update({ title, groupName }).eq('id', report.id);
+		const { error: updateError } = await supabaseAdmin.from('LedgerReports').update({ title, groupName, groupNames }).eq('id', report.id);
 		if (updateError) {
 			console.error('회계 요약표 저장 실패:', updateError);
 			// 23505 = unique_violation: 같은 건물에 이미 그 이름의 요약표(카테고리)가 있는 경우.
@@ -141,7 +151,7 @@ export async function POST(request) {
 			reportId = existingByTitle.id;
 			isExistingReport = true;
 
-			const { error: updateError } = await supabaseAdmin.from('LedgerReports').update({ groupName }).eq('id', reportId);
+			const { error: updateError } = await supabaseAdmin.from('LedgerReports').update({ groupName, groupNames }).eq('id', reportId);
 			if (updateError) {
 				console.error('회계 요약표 그룹 갱신 실패:', updateError);
 				return new NextResponse(JSON.stringify({ message: '저장에 실패했습니다.' }), { status: 500 });
@@ -149,7 +159,7 @@ export async function POST(request) {
 		} else {
 			const { data: inserted, error: insertError } = await supabaseAdmin
 				.from('LedgerReports')
-				.insert({ bldId: report.bldId, title, groupName })
+				.insert({ bldId: report.bldId, title, groupName, groupNames })
 				.select('id')
 				.single();
 
