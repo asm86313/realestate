@@ -122,24 +122,39 @@ async function generateRecurringLedgerEntries(ctx, getHolidaySet) {
 
 		const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(effectiveDay).padStart(2, '0')}`;
 
-		const { error: insertError } = await supabaseAdmin.from('Ledger').insert({
-			bldId: tpl.bldId,
-			date: dateStr,
-			purpose: tpl.purpose,
-			income: tpl.income,
-			expense: tpl.expense,
-			interestRate: tpl.interestRate,
-			interestAmount: tpl.interestAmount,
-			borrowedDays: tpl.borrowedDays,
-			interestAuto: tpl.interestAuto,
-			notes: tpl.notes,
-			reportId: tpl.reportId,
-			bankAccountId: tpl.bankAccountId,
-		});
+		const { data: insertedRows, error: insertError } = await supabaseAdmin
+			.from('Ledger')
+			.insert({
+				bldId: tpl.bldId,
+				date: dateStr,
+				purpose: tpl.purpose,
+				income: tpl.income,
+				expense: tpl.expense,
+				interestRate: tpl.interestRate,
+				interestAmount: tpl.interestAmount,
+				borrowedDays: tpl.borrowedDays,
+				interestAuto: tpl.interestAuto,
+				notes: tpl.notes,
+				reportId: tpl.reportId,
+				bankAccountId: tpl.bankAccountId,
+			})
+			.select('id');
 
 		if (insertError) {
 			console.error('반복 장부 항목 생성 실패:', tpl.id, insertError);
 			continue;
+		}
+
+		// 카테고리는 이제 연결 테이블(LedgerReportLinks)로 관리한다. 템플릿은 카테고리 하나만
+		// 고르지만, 생성된 내역이 화면(reportIds 기반)에서 바로 카테고리에 잡히도록 여기도 이어준다.
+		const newLedgerId = insertedRows?.[0]?.id;
+		if (tpl.reportId && newLedgerId) {
+			const { error: linkError } = await supabaseAdmin
+				.from('LedgerReportLinks')
+				.insert({ ledgerId: newLedgerId, reportId: tpl.reportId });
+			if (linkError) {
+				console.error('반복 장부 카테고리 연결 실패:', tpl.id, linkError);
+			}
 		}
 
 		await supabaseAdmin

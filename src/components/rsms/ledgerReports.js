@@ -44,7 +44,9 @@ export default function LedgerReports({ bldId, ledger }) {
 		queryClient.invalidateQueries({ queryKey: ['ledgerReports', bldId] });
 	}, [queryClient, bldId]);
 
-	// 요약표 = 카테고리라, 이 요약표를 고른 내역(reportId)은 수동으로 안 골라도 자동으로 잡힌다.
+	// 요약표 = 카테고리라, 이 요약표를 고른 내역(reportIds)은 수동으로 안 골라도 자동으로 잡힌다.
+	// 내역 하나가 요약표 여러 개에 동시에 속할 수 있어서, 각 요약표는 자기 id가 그 내역의
+	// reportIds 배열에 들어있으면 잡아온다 (같은 내역이 여러 요약표에 동시에 집계될 수 있다).
 	// (같은 내역을 검색으로 또 골라 넣었으면 중복 집계되지 않게 ledgerId로 걸러낸다.)
 	const reportsWithLive = useMemo(() => {
 		const ledgerById = new Map(ledger.map((row) => [row.id, row]));
@@ -52,7 +54,7 @@ export default function LedgerReports({ bldId, ledger }) {
 		return reports.map((r) => {
 			const pickedLedgerIds = new Set(r.items.filter((it) => it.ledgerId).map((it) => it.ledgerId));
 			const liveItems = ledger
-				.filter((row) => row.reportId === r.id && !pickedLedgerIds.has(row.id))
+				.filter((row) => (row.reportIds || []).includes(r.id) && !pickedLedgerIds.has(row.id))
 				.map((row) => {
 					const interest = liveInterestAmount(row);
 					const amount = ledgerRowAmount(row);
