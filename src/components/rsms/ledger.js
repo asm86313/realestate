@@ -24,10 +24,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectGroup, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 
-const NEW_REPORT_VALUE = '__new__';
-const NO_REPORT_VALUE = '__none__';
 const NEW_ACCOUNT_VALUE = '__new__';
 const NO_ACCOUNT_VALUE = '__none__';
+const ALL_CATEGORY_FILTER = '__all__';
+const NO_CATEGORY_FILTER = '__none__';
 
 const numberFmt = new Intl.NumberFormat('ko-KR');
 
@@ -64,7 +64,7 @@ const initialForm = {
 	borrowedDays: '',
 	interestAuto: true,
 	notes: '',
-	reportId: null,
+	reportIds: [],
 	bankAccountId: null,
 };
 
@@ -75,6 +75,8 @@ export default function Ledger({ bldId }) {
 	const { data: accounts = [] } = useBankAccountsQuery(bldId);
 	// 통장 탭: null이면 전체, 아니면 그 통장 내역만 이 화면 전체(잔액/달력/목록)에 반영한다.
 	const [selectedAccountId, setSelectedAccountId] = useState(null);
+	// 카테고리 필터: 목록을 나누지 않고, 대신 이걸로 고른 카테고리 내역만 보여준다.
+	const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORY_FILTER);
 	const [isAddAccountOpen, setAddAccountOpen] = useState(false);
 	const [newAccountName, setNewAccountName] = useState('');
 	const [isOpen, setOpen] = useState(false);
@@ -88,15 +90,15 @@ export default function Ledger({ bldId }) {
 	// null이면 "특정 날짜를 안 골랐다"는 뜻이라 그 달 전체 내역을 보여준다.
 	const calendarRef = useRef(null);
 	const [selectedDate, setSelectedDate] = useState(null);
-	// 카테고리 = 요약표(LedgerReports) 자체를 고르는 것. 기본은 이미 있는 요약표 중에서
-	// 고르게 하고, "새 카테고리 추가"를 고르면 이름을 입력받아 그 이름의 요약표를 새로 만든다.
-	const [isNewReport, setNewReport] = useState(false);
+	// 카테고리 = 요약표(LedgerReports) 자체를 고르는 것. 내역 하나가 여러 카테고리에 동시에
+	// 속할 수 있어서 체크리스트로 여러 개를 고르고, 새 이름을 입력해 그 자리에서 추가할 수도 있다.
 	const [newReportTitle, setNewReportTitle] = useState('');
 	// 목록에서 여러 내역을 체크해서 카테고리를 한 번에 적용하는 기능.
 	const [isSelectMode, setSelectMode] = useState(false);
 	const [selectedIds, setSelectedIds] = useState(() => new Set());
-	const [bulkReportId, setBulkReportId] = useState(null);
-	const [isBulkNewReport, setBulkNewReport] = useState(false);
+	// 일괄 적용은 이제 "덮어쓰기"가 아니라 "추가"다 - 체크한 카테고리들을 선택된 내역들의
+	// 기존 카테고리에 더해준다(원래 있던 카테고리는 그대로 남는다). 그래서 여러 개 체크 가능.
+	const [bulkReportIds, setBulkReportIds] = useState(() => new Set());
 	const [bulkNewReportTitle, setBulkNewReportTitle] = useState('');
 	const [bulkApplying, setBulkApplying] = useState(false);
 
@@ -112,13 +114,15 @@ export default function Ledger({ bldId }) {
 	const [newAccountTitle, setNewAccountTitle] = useState('');
 
 	const onAdd = useCallback(() => {
-		setForm({ ...initialForm, bankAccountId: selectedAccountId });
-		setNewReport(false);
+		// 지금 특정 카테고리로 필터링해서 보고 있었으면, 새 내역도 그 카테고리로 미리 체크해준다.
+		const prefilledReportIds =
+			categoryFilter !== ALL_CATEGORY_FILTER && categoryFilter !== NO_CATEGORY_FILTER ? [Number(categoryFilter)] : [];
+		setForm({ ...initialForm, bankAccountId: selectedAccountId, reportIds: prefilledReportIds });
 		setNewReportTitle('');
 		setNewAccount(false);
 		setNewAccountTitle('');
 		setOpen(true);
-	}, [selectedAccountId]);
+	}, [selectedAccountId, categoryFilter]);
 
 	const onEditRow = useCallback((row) => {
 		setForm({
@@ -132,10 +136,9 @@ export default function Ledger({ bldId }) {
 			borrowedDays: row.borrowedDays ?? '',
 			interestAuto: row.interestAuto ?? false,
 			notes: row.notes || '',
-			reportId: row.reportId ?? null,
+			reportIds: row.reportIds || [],
 			bankAccountId: row.bankAccountId ?? null,
 		});
-		setNewReport(false);
 		setNewReportTitle('');
 		setNewAccount(false);
 		setNewAccountTitle('');
@@ -157,15 +160,35 @@ export default function Ledger({ bldId }) {
 		});
 	}, [form.interestAuto, form.date, form.income, form.expense, form.interestRate]);
 
-	const onReportSelect = useCallback((v) => {
-		if (v === NEW_REPORT_VALUE) {
-			setNewReport(true);
-			setForm((prev) => ({ ...prev, reportId: null }));
+	// 카테고리는 이제 여러 개를 동시에 체크할 수 있다 - 목록에서 하나씩 켜고 끈다.
+	const toggleFormReport = useCallback((id) => {
+		setForm((prev) => {
+			const set = new Set(prev.reportIds);
+			if (set.has(id)) set.delete(id);
+			else set.add(id);
+			return { ...prev, reportIds: Array.from(set) };
+		});
+	}, []);
+
+	// "+ 새 카테고리 추가"는 저장을 미루지 않고 바로 요약표를 만들어서(같은 이름 있으면 재사용)
+	// 그 자리에서 체크해준다 - 여러 카테고리를 골라야 해서 저장 시점까지 미루면 하나만 만들 수 있다.
+	const onAddNewReportToForm = useCallback(async () => {
+		if (!newReportTitle.trim()) {
+			toast.warning('새 카테고리 이름을 입력해주세요.');
 			return;
 		}
-		setNewReport(false);
-		setForm((prev) => ({ ...prev, reportId: v === NO_REPORT_VALUE ? null : Number(v) }));
-	}, []);
+		const reportRes = await saveLedgerReport({ bldId, title: newReportTitle.trim(), items: [] });
+		if (!reportRes) {
+			toast.error('카테고리 생성에 실패했습니다.');
+			return;
+		}
+		const newId = reportRes.data?.id ?? null;
+		queryClient.invalidateQueries({ queryKey: ['ledgerReports', bldId] });
+		setNewReportTitle('');
+		if (newId) {
+			setForm((prev) => ({ ...prev, reportIds: Array.from(new Set([...prev.reportIds, newId])) }));
+		}
+	}, [newReportTitle, bldId, queryClient]);
 
 	const onAccountSelect = useCallback((v) => {
 		if (v === NEW_ACCOUNT_VALUE) {
@@ -180,8 +203,7 @@ export default function Ledger({ bldId }) {
 	const toggleSelectMode = useCallback(() => {
 		setSelectMode((prev) => !prev);
 		setSelectedIds(new Set());
-		setBulkReportId(null);
-		setBulkNewReport(false);
+		setBulkReportIds(new Set());
 		setBulkNewReportTitle('');
 	}, []);
 
@@ -194,17 +216,33 @@ export default function Ledger({ bldId }) {
 		});
 	}, []);
 
-	const onBulkReportSelect = useCallback((v) => {
-		if (v === NEW_REPORT_VALUE) {
-			setBulkNewReport(true);
-			setBulkReportId(null);
-			return;
-		}
-		setBulkNewReport(false);
-		setBulkReportId(v === NO_REPORT_VALUE ? null : Number(v));
+	const toggleBulkReport = useCallback((id) => {
+		setBulkReportIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
 	}, []);
 
-	// 체크한 내역 전부에 같은 카테고리를 한 번에 적용한다.
+	// 일괄 적용 패널에서도 "+ 새 카테고리 추가"는 그 자리에서 바로 만들어서 체크해준다.
+	const onAddNewReportToBulk = useCallback(async () => {
+		if (!bulkNewReportTitle.trim()) {
+			toast.warning('새 카테고리 이름을 입력해주세요.');
+			return;
+		}
+		const reportRes = await saveLedgerReport({ bldId, title: bulkNewReportTitle.trim(), items: [] });
+		if (!reportRes) {
+			toast.error('카테고리 생성에 실패했습니다.');
+			return;
+		}
+		const newId = reportRes.data?.id ?? null;
+		queryClient.invalidateQueries({ queryKey: ['ledgerReports', bldId] });
+		setBulkNewReportTitle('');
+		if (newId) setBulkReportIds((prev) => new Set(prev).add(newId));
+	}, [bulkNewReportTitle, bldId, queryClient]);
+
+	// 체크한 내역 전부에 체크한 카테고리들을 한 번에 "추가"한다(기존 카테고리는 유지).
 	// 카테고리 필드만 바꾸는 게 아니라, 각 내역의 다른 값(날짜/금액/통장 등)은 그대로 실어서
 	// 다시 저장한다 - regLedger가 매번 행 전체를 덮어쓰는 방식이라, 값을 안 실으면 지워진다.
 	const onApplyBulkCategory = useCallback(async () => {
@@ -212,20 +250,9 @@ export default function Ledger({ bldId }) {
 			toast.warning('먼저 내역을 선택해주세요.');
 			return;
 		}
-
-		let reportId = bulkReportId;
-		if (isBulkNewReport) {
-			if (!bulkNewReportTitle.trim()) {
-				toast.warning('새 카테고리 이름을 입력해주세요.');
-				return;
-			}
-			const reportRes = await saveLedgerReport({ bldId, title: bulkNewReportTitle.trim(), items: [] });
-			if (!reportRes) {
-				toast.error('카테고리 생성에 실패했습니다.');
-				return;
-			}
-			reportId = reportRes.data?.id ?? null;
-			queryClient.invalidateQueries({ queryKey: ['ledgerReports', bldId] });
+		if (bulkReportIds.size === 0) {
+			toast.warning('적용할 카테고리를 선택해주세요.');
+			return;
 		}
 
 		setBulkApplying(true);
@@ -245,7 +272,7 @@ export default function Ledger({ bldId }) {
 						borrowedDays: row.borrowedDays,
 						interestAuto: row.interestAuto,
 						notes: row.notes,
-						reportId,
+						reportIds: Array.from(new Set([...(row.reportIds || []), ...bulkReportIds])),
 						bankAccountId: row.bankAccountId,
 					})
 				)
@@ -261,31 +288,13 @@ export default function Ledger({ bldId }) {
 		} finally {
 			setBulkApplying(false);
 		}
-	}, [selectedIds, bulkReportId, isBulkNewReport, bulkNewReportTitle, bldId, ledger, queryClient, invalidate, toggleSelectMode]);
+	}, [selectedIds, bulkReportIds, ledger, invalidate, toggleSelectMode]);
 
 	const onClose = useCallback(() => {
 		setOpen(false);
 	}, []);
 
 	const onSave = useCallback(async () => {
-		let reportId = form.reportId;
-
-		// "새 카테고리 추가"를 골랐으면, 내역을 저장하기 전에 그 이름의 요약표부터 만든다
-		// (이미 같은 이름이 있으면 서버가 알아서 그걸 재사용한다).
-		if (isNewReport) {
-			if (!newReportTitle.trim()) {
-				toast.warning('새 카테고리 이름을 입력해주세요.');
-				return;
-			}
-			const reportRes = await saveLedgerReport({ bldId, title: newReportTitle.trim(), items: [] });
-			if (!reportRes) {
-				toast.error('카테고리 생성에 실패했습니다.');
-				return;
-			}
-			reportId = reportRes.data?.id ?? null;
-			queryClient.invalidateQueries({ queryKey: ['ledgerReports', bldId] });
-		}
-
 		let bankAccountId = form.bankAccountId;
 
 		// "새 통장 추가"를 골랐으면 저장 전에 그 통장부터 만든다 (같은 이름 있으면 서버가 재사용).
@@ -315,7 +324,7 @@ export default function Ledger({ bldId }) {
 			borrowedDays: form.borrowedDays === '' ? null : Number(form.borrowedDays),
 			interestAuto: form.interestAuto,
 			notes: form.notes,
-			reportId,
+			reportIds: form.reportIds,
 			bankAccountId,
 		});
 
@@ -327,7 +336,7 @@ export default function Ledger({ bldId }) {
 		toast.success(form.id ? '항목이 수정되었습니다.' : '항목이 등록되었습니다.');
 		setOpen(false);
 		invalidate();
-	}, [form, bldId, invalidate, isNewReport, newReportTitle, isNewAccount, newAccountTitle, queryClient]);
+	}, [form, bldId, invalidate, isNewAccount, newAccountTitle, queryClient]);
 
 	const onDelete = useCallback(async () => {
 		const res = await delLedger(form.id);
@@ -450,41 +459,27 @@ export default function Ledger({ bldId }) {
 	const reportTitleById = useMemo(() => new Map(reports.map((r) => [r.id, r.title])), [reports]);
 	const accountNameById = useMemo(() => new Map(accounts.map((a) => [a.id, a.name])), [accounts]);
 
-	// 지금 보이는 목록을 카테고리별로 나눠서, 카테고리마다 소계를 붙이고 맨 아래 전체 합계를 보여준다.
-	const categorizedDisplay = useMemo(() => {
-		const groups = new Map();
-		for (const row of displayedLedger) {
-			const key = row.reportId ?? null;
-			const list = groups.get(key) || [];
-			list.push(row);
-			groups.set(key, list);
-		}
-		const result = Array.from(groups.entries()).map(([reportId, rows]) => ({
-			reportId,
-			title: reportId ? reportTitleById.get(reportId) || '알 수 없는 카테고리' : '카테고리 없음',
-			rows,
-			subtotal: rows.reduce((sum, r) => sum + Number(r.income || 0) - Number(r.expense || 0), 0),
-		}));
-		// "카테고리 없음"을 맨 위로 - 정리 안 된 내역부터 눈에 띄게.
-		result.sort((a, b) => (a.reportId === null ? -1 : b.reportId === null ? 1 : 0));
-		return result;
-	}, [displayedLedger, reportTitleById]);
-	const displayedTotal = displayedLedger.reduce((sum, r) => sum + Number(r.income || 0) - Number(r.expense || 0), 0);
-
-	// 지금 화면에 보이는 목록(전체/연도별/월별 + 통장 필터가 적용된 상태) 그대로 CSV로 내려받는다.
+	// 카테고리 필터: "카테고리 없음"/특정 카테고리를 고르면 목록을 그걸로만 좁힌다. 안 나누고 뱃지로만 표시.
+	const visibleLedger = useMemo(() => {
+		if (categoryFilter === ALL_CATEGORY_FILTER) return displayedLedger;
+		if (categoryFilter === NO_CATEGORY_FILTER) return displayedLedger.filter((row) => (row.reportIds || []).length === 0);
+		const reportId = Number(categoryFilter);
+		return displayedLedger.filter((row) => (row.reportIds || []).includes(reportId));
+	}, [displayedLedger, categoryFilter]);
+	// 지금 화면에 보이는 목록(전체/연도별/월별 + 통장/카테고리 필터가 적용된 상태) 그대로 CSV로 내려받는다.
 	const onExportCsv = useCallback(() => {
-		if (displayedLedger.length === 0) {
+		if (visibleLedger.length === 0) {
 			toast.warning('내려받을 내역이 없습니다.');
 			return;
 		}
 		const accountLabel = selectedAccountId ? accountNameById.get(selectedAccountId) || '통장' : '전체통장';
 		const periodPart = viewMode === 'month' && selectedDate ? selectedDate : periodLabel;
 		downloadLedgerCsv(
-			displayedLedger,
+			visibleLedger,
 			{ reportTitleById, accountNameById },
 			`장부_${accountLabel}_${periodPart}.csv`
 		);
-	}, [displayedLedger, reportTitleById, accountNameById, selectedAccountId, viewMode, selectedDate, periodLabel]);
+	}, [visibleLedger, reportTitleById, accountNameById, selectedAccountId, viewMode, selectedDate, periodLabel]);
 
 	const renderLedgerRow = (row) => (
 		<div
@@ -502,6 +497,13 @@ export default function Ledger({ bldId }) {
 			<div className="min-w-0 flex-1">
 				<div className="flex items-center gap-1.5">
 					<p className="truncate text-sm font-medium">{row.purpose || '(내용 없음)'}</p>
+					{(row.reportIds || []).map((id) =>
+						reportTitleById.get(id) ? (
+							<span key={id} className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+								{reportTitleById.get(id)}
+							</span>
+						) : null
+					)}
 					{row.bankAccountId && accountNameById.get(row.bankAccountId) && (
 						<span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
 							{accountNameById.get(row.bankAccountId)}
@@ -641,26 +643,23 @@ export default function Ledger({ bldId }) {
 			{isSelectMode && (
 				<Card>
 					<CardContent className="flex flex-col gap-2 p-3 sm:p-3">
-						<Select
-							value={isBulkNewReport ? NEW_REPORT_VALUE : (bulkReportId ? String(bulkReportId) : NO_REPORT_VALUE)}
-							onValueChange={onBulkReportSelect}
-						>
-							<SelectTrigger>
-								<SelectValue placeholder="적용할 카테고리 선택" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectGroup>
-									<SelectItem value={NO_REPORT_VALUE}>카테고리 없음</SelectItem>
+						<Label className="text-xs text-muted-foreground">추가할 카테고리 (여러 개 선택 가능)</Label>
+						{reports.length > 0 && (
+							<Card>
+								<CardContent className="max-h-40 divide-y overflow-y-auto p-0 sm:p-0">
 									{reports.map((r) => (
-										<SelectItem value={String(r.id)} key={r.id}>{r.title}</SelectItem>
+										<label key={r.id} className="flex cursor-pointer items-center gap-2 p-2.5 text-sm">
+											<Checkbox checked={bulkReportIds.has(r.id)} onCheckedChange={() => toggleBulkReport(r.id)} />
+											{r.title}
+										</label>
 									))}
-									<SelectItem value={NEW_REPORT_VALUE}>+ 새 카테고리 추가</SelectItem>
-								</SelectGroup>
-							</SelectContent>
-						</Select>
-						{isBulkNewReport && (
-							<Input value={bulkNewReportTitle} placeholder="새 카테고리 이름" onChange={(e) => setBulkNewReportTitle(e.target.value)} autoFocus />
+								</CardContent>
+							</Card>
 						)}
+						<div className="flex gap-2">
+							<Input value={bulkNewReportTitle} placeholder="새 카테고리 이름" onChange={(e) => setBulkNewReportTitle(e.target.value)} />
+							<Button type="button" variant="outline" onClick={onAddNewReportToBulk}>추가</Button>
+						</div>
 						<Button
 							type="button"
 							className="gap-1.5"
@@ -673,33 +672,35 @@ export default function Ledger({ bldId }) {
 				</Card>
 			)}
 
-			{displayedLedger.length === 0 ? (
+			<Select value={categoryFilter} onValueChange={setCategoryFilter}>
+				<SelectTrigger>
+					<SelectValue placeholder="카테고리 선택" />
+				</SelectTrigger>
+				<SelectContent>
+					<SelectGroup>
+						<SelectItem value={ALL_CATEGORY_FILTER}>전체 카테고리</SelectItem>
+						<SelectItem value={NO_CATEGORY_FILTER}>카테고리 없음</SelectItem>
+						{reports.map((r) => (
+							<SelectItem value={String(r.id)} key={r.id}>{r.title}</SelectItem>
+						))}
+					</SelectGroup>
+				</SelectContent>
+			</Select>
+
+			{visibleLedger.length === 0 ? (
 				<Card>
 					<CardContent className="flex items-center justify-center p-8 sm:p-8 text-sm text-muted-foreground">
-						{viewMode === 'all' ? '등록된 내역이 없습니다.' : viewMode === 'month' ? `${selectedDateLabel} 내역이 없습니다.` : `${periodLabel} 내역이 없습니다.`}
+						{categoryFilter !== ALL_CATEGORY_FILTER
+							? '이 카테고리에 해당하는 내역이 없습니다.'
+							: viewMode === 'all' ? '등록된 내역이 없습니다.' : viewMode === 'month' ? `${selectedDateLabel} 내역이 없습니다.` : `${periodLabel} 내역이 없습니다.`}
 					</CardContent>
 				</Card>
 			) : (
-				<div className="flex flex-col gap-2">
-					{categorizedDisplay.map((group) => (
-						<Card key={group.reportId ?? 'none'}>
-							<CardContent className="flex items-center justify-between gap-3 border-b p-3 sm:p-3">
-								<span className="text-sm font-semibold">{group.title}</span>
-								<span className="text-sm font-semibold">소계 {toWon(group.subtotal)}원</span>
-							</CardContent>
-							<CardContent className="divide-y p-0 sm:p-0">
-								{group.rows.map(renderLedgerRow)}
-							</CardContent>
-						</Card>
-					))}
-
-					<Card>
-						<CardContent className="flex items-center justify-between p-4 font-semibold sm:p-4">
-							<span>합계</span>
-							<span>{toWon(displayedTotal)}원</span>
-						</CardContent>
-					</Card>
-				</div>
+				<Card>
+					<CardContent className="divide-y p-0 sm:p-0">
+						{visibleLedger.map(renderLedgerRow)}
+					</CardContent>
+				</Card>
 			)}
 
 			<div className="flex gap-2">
@@ -769,27 +770,25 @@ export default function Ledger({ bldId }) {
 							<Input value={form.purpose} placeholder="목적" onChange={setField('purpose')} />
 						</div>
 						<div className="flex flex-col gap-1.5">
-							<Label>카테고리 (요약표)</Label>
-							<Select
-								value={isNewReport ? NEW_REPORT_VALUE : (form.reportId ? String(form.reportId) : NO_REPORT_VALUE)}
-								onValueChange={onReportSelect}
-							>
-								<SelectTrigger>
-									<SelectValue placeholder="카테고리 선택" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectGroup>
-										<SelectItem value={NO_REPORT_VALUE}>카테고리 없음</SelectItem>
+							<Label>카테고리 (요약표) · 여러 개 선택 가능</Label>
+							{reports.length === 0 ? (
+								<p className="rounded-md border p-3 text-center text-xs text-muted-foreground">아직 만들어진 카테고리가 없어요.</p>
+							) : (
+								<Card>
+									<CardContent className="max-h-40 divide-y overflow-y-auto p-0 sm:p-0">
 										{reports.map((r) => (
-											<SelectItem value={String(r.id)} key={r.id}>{r.title}</SelectItem>
+											<label key={r.id} className="flex cursor-pointer items-center gap-2 p-2.5 text-sm">
+												<Checkbox checked={form.reportIds.includes(r.id)} onCheckedChange={() => toggleFormReport(r.id)} />
+												{r.title}
+											</label>
 										))}
-										<SelectItem value={NEW_REPORT_VALUE}>+ 새 카테고리 추가</SelectItem>
-									</SelectGroup>
-								</SelectContent>
-							</Select>
-							{isNewReport && (
-								<Input value={newReportTitle} placeholder="새 카테고리 이름" onChange={(e) => setNewReportTitle(e.target.value)} autoFocus />
+									</CardContent>
+								</Card>
 							)}
+							<div className="flex gap-2">
+								<Input value={newReportTitle} placeholder="새 카테고리 이름" onChange={(e) => setNewReportTitle(e.target.value)} />
+								<Button type="button" variant="outline" onClick={onAddNewReportToForm}>추가</Button>
+							</div>
 						</div>
 						<div className="flex flex-col gap-1.5">
 							<Label>통장</Label>

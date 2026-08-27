@@ -15,7 +15,7 @@ export function downloadLedgerCsv(rows, { reportTitleById, accountNameById }, fi
 	const lines = rows.map((row) => [
 		row.date || '',
 		row.purpose || '',
-		row.reportId ? reportTitleById.get(row.reportId) || '' : '',
+		(row.reportIds || []).map((id) => reportTitleById.get(id)).filter(Boolean).join(', '),
 		row.bankAccountId ? accountNameById.get(row.bankAccountId) || '' : '',
 		row.income ?? '',
 		row.expense ?? '',

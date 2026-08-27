@@ -24,7 +24,7 @@ export async function GET(request) {
 
 	let query = supabaseAdmin
 		.from('Ledger')
-		.select('*, Buildings!inner(address, ownerId)')
+		.select('*, Buildings!inner(address, ownerId), LedgerReportLinks(reportId)')
 		.eq('Buildings.ownerId', ownerId)
 		.order('date', { ascending: true })
 		.order('id', { ascending: true });
@@ -39,7 +39,15 @@ export async function GET(request) {
 		return new NextResponse(JSON.stringify({ message: '장부 조회에 실패했습니다.' }), { status: 500 });
 	}
 
-	return new NextResponse(JSON.stringify({ ledger: data }), { status: 200 });
+	// 내역 하나가 카테고리(요약표) 여러 개에 속할 수 있어서, 연결 테이블(LedgerReportLinks)에서
+	// 온 걸 reportIds 배열로 펴서 내려준다. 옛 reportId(단일) 컬럼은 그대로 같이 내려가지만
+	// 화면에서는 이제 안 쓰고 reportIds만 본다.
+	const ledger = (data || []).map(({ LedgerReportLinks, ...row }) => ({
+		...row,
+		reportIds: (LedgerReportLinks || []).map((l) => l.reportId),
+	}));
+
+	return new NextResponse(JSON.stringify({ ledger }), { status: 200 });
 }
 
 // 장부 항목 등록/수정
@@ -72,21 +80,25 @@ export async function POST(request) {
 		return new NextResponse(JSON.stringify({ message: '권한이 없습니다.' }), { status: 403 });
 	}
 
-	// reportId(카테고리로 고른 요약표)를 넣는 경우, 그 요약표가 같은 건물 것인지 확인
-	// (다른 건물/가족 요약표에 슬쩍 연결하는 걸 막는다).
-	if (entry.reportId) {
-		const { data: rpt, error: rptError } = await supabaseAdmin
+	// 카테고리(요약표)는 이제 내역 하나당 여러 개 고를 수 있다. reportIds(배열)를 기본으로 받고,
+	// 옛 방식으로 reportId(단일)만 보내는 곳(반복 템플릿 등)이 있으면 그것도 배열로 합쳐준다.
+	const reportIds = Array.from(
+		new Set([...(Array.isArray(entry.reportIds) ? entry.reportIds : []), ...(entry.reportId ? [entry.reportId] : [])].filter(Boolean))
+	);
+
+	// 고른 요약표들이 전부 같은 건물 것인지 확인 (다른 건물/가족 요약표에 슬쩍 연결하는 걸 막는다).
+	if (reportIds.length > 0) {
+		const { data: rpts, error: rptError } = await supabaseAdmin
 			.from('LedgerReports')
 			.select('id')
-			.eq('id', entry.reportId)
 			.eq('bldId', entry.bldId)
-			.maybeSingle();
+			.in('id', reportIds);
 
 		if (rptError) {
 			console.error('요약표 확인 실패:', rptError);
 			return new NextResponse(JSON.stringify({ message: '요약표 확인에 실패했습니다.' }), { status: 500 });
 		}
-		if (!rpt) {
+		if (!rpts || rpts.length !== reportIds.length) {
 			return new NextResponse(JSON.stringify({ message: '유효하지 않은 요약표입니다.' }), { status: 400 });
 		}
 	}
@@ -120,16 +132,37 @@ export async function POST(request) {
 		borrowedDays: entry.borrowedDays || null,
 		interestAuto: entry.interestAuto ?? false,
 		notes: entry.notes || null,
-		reportId: entry.reportId || null,
+		// 옛 단일 reportId 컬럼도 참고용으로 첫 번째 카테고리로 채워둔다(화면은 이제 안 읽음).
+		reportId: reportIds[0] ?? null,
 		bankAccountId: entry.bankAccountId || null,
 	};
 	if (entry.id) payload.id = entry.id;
 
-	const { error } = await supabaseAdmin.from('Ledger').upsert(payload, { onConflict: ['id'] });
+	const { data: savedRows, error } = await supabaseAdmin.from('Ledger').upsert(payload, { onConflict: ['id'] }).select('id');
 
 	if (error) {
 		console.error('장부 저장 실패:', error);
 		return new NextResponse(JSON.stringify({ message: '장부 저장에 실패했습니다.' }), { status: 500 });
+	}
+
+	// 카테고리 다중 연결 동기화: 이 내역의 연결을 전부 지우고 이번에 고른 것들로 다시 채운다
+	// (통째로 다시 쓰는 방식이라 순서 상관없이 항상 최종 선택 그대로 반영된다).
+	const ledgerId = entry.id || savedRows?.[0]?.id;
+	if (ledgerId) {
+		const { error: unlinkError } = await supabaseAdmin.from('LedgerReportLinks').delete().eq('ledgerId', ledgerId);
+		if (unlinkError) {
+			console.error('카테고리 연결 초기화 실패:', unlinkError);
+			return new NextResponse(JSON.stringify({ message: '카테고리 연결에 실패했습니다.' }), { status: 500 });
+		}
+		if (reportIds.length > 0) {
+			const { error: linkError } = await supabaseAdmin
+				.from('LedgerReportLinks')
+				.insert(reportIds.map((reportId) => ({ ledgerId, reportId })));
+			if (linkError) {
+				console.error('카테고리 연결 실패:', linkError);
+				return new NextResponse(JSON.stringify({ message: '카테고리 연결에 실패했습니다.' }), { status: 500 });
+			}
+		}
 	}
 
 	return new NextResponse(JSON.stringify({ message: '저장되었습니다.' }), { status: 200 });
