@@ -22,7 +22,7 @@ function toWon(n) {
 	return numberFmt.format(Number(n));
 }
 
-const emptyDraft = { id: null, title: '', groupName: '', items: [] };
+const emptyDraft = { id: null, title: '', groupNames: [], items: [] };
 
 // 전체 내역 중 원하는 것만 검색해서 고르거나, 직접 입력한 줄을 섞어서
 // "총 비용"처럼 이름 붙은 요약표로 저장해두는 기능. 회계 > 전체 탭에서만 쓰인다.
@@ -38,6 +38,7 @@ export default function LedgerReports({ bldId, ledger }) {
 	const [manualLabel, setManualLabel] = useState('');
 	const [manualAmount, setManualAmount] = useState('');
 	const [manualNotes, setManualNotes] = useState('');
+	const [groupInput, setGroupInput] = useState('');
 	const [detailReportId, setDetailReportId] = useState(null);
 
 	const invalidate = useCallback(() => {
@@ -106,18 +107,22 @@ export default function LedgerReports({ bldId, ledger }) {
 
 	const detailReport = reportsWithLive.find((r) => r.id === detailReportId) || null;
 
-	// 그룹명이 있는 요약표끼리는 그룹으로 묶어서, 그룹 합계와 함께 보여준다.
-	// 그룹이 없는 요약표는 예전처럼 개별로 보여준다.
+	// 그룹도 이제 요약표 하나가 여러 개에 동시에 속할 수 있다. 자기가 속한 그룹마다 한 번씩
+	// 그 그룹 카드에 나타난다(같은 요약표가 여러 그룹 합계에 동시에 들어갈 수 있다는 뜻).
+	// 그룹이 하나도 없는 요약표는 예전처럼 개별로 보여준다.
 	const { groupedList, standaloneList } = useMemo(() => {
 		const groups = new Map();
 		const standalone = [];
 		for (const r of reportsWithLive) {
-			if (r.groupName) {
-				const list = groups.get(r.groupName) || [];
-				list.push(r);
-				groups.set(r.groupName, list);
-			} else {
+			const names = r.groupNames || [];
+			if (names.length === 0) {
 				standalone.push(r);
+				continue;
+			}
+			for (const name of names) {
+				const list = groups.get(name) || [];
+				list.push(r);
+				groups.set(name, list);
 			}
 		}
 		const groupedList = Array.from(groups.entries()).map(([groupName, list]) => ({
@@ -130,7 +135,7 @@ export default function LedgerReports({ bldId, ledger }) {
 
 	// 그룹 입력 자동완성용 목록.
 	const groupOptions = useMemo(
-		() => Array.from(new Set(reports.map((r) => r.groupName).filter(Boolean))).sort(),
+		() => Array.from(new Set(reports.flatMap((r) => r.groupNames || []))).sort(),
 		[reports]
 	);
 
@@ -149,6 +154,19 @@ export default function LedgerReports({ bldId, ledger }) {
 		setManualLabel('');
 		setManualAmount('');
 		setManualNotes('');
+		setGroupInput('');
+	}, []);
+
+	// 그룹도 카테고리처럼 여러 개를 태그로 추가/제거한다.
+	const addDraftGroup = useCallback(() => {
+		const name = groupInput.trim();
+		if (!name) return;
+		setDraft((prev) => (prev.groupNames.includes(name) ? prev : { ...prev, groupNames: [...prev.groupNames, name] }));
+		setGroupInput('');
+	}, [groupInput]);
+
+	const removeDraftGroup = useCallback((name) => {
+		setDraft((prev) => ({ ...prev, groupNames: prev.groupNames.filter((g) => g !== name) }));
 	}, []);
 
 	const onOpenNewBuilder = useCallback(() => {
@@ -161,7 +179,7 @@ export default function LedgerReports({ bldId, ledger }) {
 		setDraft({
 			id: report.id,
 			title: report.title,
-			groupName: report.groupName || '',
+			groupNames: report.groupNames || [],
 			items: report.correctedItems.map((it) => ({
 				label: it.label,
 				amount: it.amount,
@@ -210,7 +228,7 @@ export default function LedgerReports({ bldId, ledger }) {
 			return;
 		}
 		// 내역 없이 이름만 있는 껍데기로도 저장할 수 있다 - 나중에 열어서 채우면 된다.
-		const res = await saveLedgerReport({ id: draft.id, bldId, title: draft.title, groupName: draft.groupName, items: draft.items });
+		const res = await saveLedgerReport({ id: draft.id, bldId, title: draft.title, groupNames: draft.groupNames, items: draft.items });
 		if (!res) {
 			toast.error('저장에 실패했습니다.');
 			return;
@@ -305,9 +323,9 @@ export default function LedgerReports({ bldId, ledger }) {
 						<>
 							<DialogHeader>
 								<DialogTitle>{detailReport.title}</DialogTitle>
-								{detailReport.groupName && (
-									<DialogDescription className="flex items-center gap-1">
-										<Folder className="size-3.5" /> {detailReport.groupName} 그룹
+								{detailReport.groupNames?.length > 0 && (
+									<DialogDescription className="flex flex-wrap items-center gap-1">
+										<Folder className="size-3.5" /> {detailReport.groupNames.join(', ')} 그룹
 									</DialogDescription>
 								)}
 							</DialogHeader>
@@ -408,15 +426,36 @@ export default function LedgerReports({ bldId, ledger }) {
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<Label>그룹 (선택)</Label>
-						<Input
-							value={draft.groupName}
-							placeholder="예: 이자비용 (여러 요약표를 한 그룹으로 묶어서 보고 싶을 때)"
-							list="ledger-report-group-list"
-							onChange={(e) => setDraft((prev) => ({ ...prev, groupName: e.target.value }))}
-						/>
+						<Label>그룹 (선택) · 여러 개 선택 가능</Label>
+						{draft.groupNames.length > 0 && (
+							<div className="flex flex-wrap gap-1.5">
+								{draft.groupNames.map((g) => (
+									<span key={g} className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs">
+										{g}
+										<button type="button" onClick={() => removeDraftGroup(g)}>
+											<X className="size-3" />
+										</button>
+									</span>
+								))}
+							</div>
+						)}
+						<div className="flex gap-2">
+							<Input
+								value={groupInput}
+								placeholder="예: 이자비용 (여러 요약표를 한 그룹으로 묶어서 보고 싶을 때)"
+								list="ledger-report-group-list"
+								onChange={(e) => setGroupInput(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter') {
+										e.preventDefault();
+										addDraftGroup();
+									}
+								}}
+							/>
+							<Button type="button" variant="outline" onClick={addDraftGroup}>추가</Button>
+						</div>
 						<datalist id="ledger-report-group-list">
-							{groupOptions.map((g) => (
+							{groupOptions.filter((g) => !draft.groupNames.includes(g)).map((g) => (
 								<option value={g} key={g} />
 							))}
 						</datalist>
