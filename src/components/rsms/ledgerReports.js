@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { FileText, Folder, Landmark, Plus, Search, X } from 'lucide-react';
+import { ArrowUpDown, FileText, Folder, Landmark, Plus, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
 
@@ -40,6 +40,8 @@ export default function LedgerReports({ bldId, ledger }) {
 	const [manualNotes, setManualNotes] = useState('');
 	const [groupInput, setGroupInput] = useState('');
 	const [detailReportId, setDetailReportId] = useState(null);
+	// 상세보기 안 내역 정렬: 기본은 최신 날짜부터(내림차순). 날짜가 없는 줄(직접 입력)은 맨 뒤로 보낸다.
+	const [itemSortOrder, setItemSortOrder] = useState('desc');
 
 	const invalidate = useCallback(() => {
 		queryClient.invalidateQueries({ queryKey: ['ledgerReports', bldId] });
@@ -66,6 +68,7 @@ export default function LedgerReports({ bldId, ledger }) {
 						principal: amount - interest,
 						interest,
 						notes: interest ? `${row.date} · 원금+이자 ${toWon(interest)}원 포함` : row.date,
+						date: row.date || null,
 						bankAccountId: row.bankAccountId ?? null,
 						isLive: true,
 					};
@@ -78,10 +81,10 @@ export default function LedgerReports({ bldId, ledger }) {
 			// 원금/이자를 나눌 근거가 없어서 전액을 원금으로 취급한다.
 			const correctedItems = r.items.map((it) => {
 				const src = it.ledgerId && ledgerById.get(it.ledgerId);
-				if (!src) return { ...it, principal: it.amount, interest: 0 };
+				if (!src) return { ...it, principal: it.amount, interest: 0, date: null };
 				const interest = liveInterestAmount(src);
 				const amount = ledgerRowAmount(src);
-				return { ...it, amount, principal: amount - interest, interest, bankAccountId: src.bankAccountId ?? null };
+				return { ...it, amount, principal: amount - interest, interest, bankAccountId: src.bankAccountId ?? null, date: src.date || null };
 			});
 
 			const allItems = [...liveItems, ...correctedItems];
@@ -106,6 +109,18 @@ export default function LedgerReports({ bldId, ledger }) {
 	}, [reports, ledger, accountNameById]);
 
 	const detailReport = reportsWithLive.find((r) => r.id === detailReportId) || null;
+
+	// 통장별 카드 안에서 보여줄 내역 정렬. 날짜 없는 직접 입력 줄은 항상 맨 뒤에 둔다.
+	const sortedDetailItems = useMemo(() => {
+		if (!detailReport) return [];
+		const dir = itemSortOrder === 'desc' ? -1 : 1;
+		return detailReport.allItems.slice().sort((a, b) => {
+			if (!a.date && !b.date) return 0;
+			if (!a.date) return 1;
+			if (!b.date) return -1;
+			return a.date.localeCompare(b.date) * dir;
+		});
+	}, [detailReport, itemSortOrder]);
 
 	// 그룹도 이제 요약표 하나가 여러 개에 동시에 속할 수 있다. 자기가 속한 그룹마다 한 번씩
 	// 그 그룹 카드에 나타난다(같은 요약표가 여러 그룹 합계에 동시에 들어갈 수 있다는 뜻).
@@ -373,34 +388,47 @@ export default function LedgerReports({ bldId, ledger }) {
 									</CardContent>
 								</Card>
 							) : (
-								detailReport.accountBreakdown.map((b) => (
-									<Card key={b.accountId ?? 'none'}>
-										<CardContent className="flex items-center justify-between gap-3 border-b p-3 sm:p-3">
-											<span className="flex items-center gap-1.5 text-sm font-semibold">
-												<Landmark className="size-3.5 text-muted-foreground" /> {b.name}
-											</span>
-											<span className="text-sm font-semibold">소계 {toWon(b.amount)}원</span>
-										</CardContent>
-										<CardContent className="divide-y p-0 sm:p-0">
-											{detailReport.allItems
-												.filter((it) => (it.bankAccountId ?? null) === b.accountId)
-												.map((it) => (
-													<div key={it.id} className="flex items-center justify-between gap-3 p-3">
-														<div className="min-w-0 flex-1">
-															<div className="flex items-center gap-1.5">
-																<p className="truncate text-sm">{it.label}</p>
-																{it.isLive && (
-																	<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">자동</span>
-																)}
+								<>
+									<div className="flex justify-end">
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											className="gap-1.5"
+											onClick={() => setItemSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+										>
+											<ArrowUpDown className="size-4" /> {itemSortOrder === 'desc' ? '최신순' : '오래된순'}
+										</Button>
+									</div>
+									{detailReport.accountBreakdown.map((b) => (
+										<Card key={b.accountId ?? 'none'}>
+											<CardContent className="flex items-center justify-between gap-3 border-b p-3 sm:p-3">
+												<span className="flex items-center gap-1.5 text-sm font-semibold">
+													<Landmark className="size-3.5 text-muted-foreground" /> {b.name}
+												</span>
+												<span className="text-sm font-semibold">소계 {toWon(b.amount)}원</span>
+											</CardContent>
+											<CardContent className="divide-y p-0 sm:p-0">
+												{sortedDetailItems
+													.filter((it) => (it.bankAccountId ?? null) === b.accountId)
+													.map((it) => (
+														<div key={it.id} className="flex items-center justify-between gap-3 p-3">
+															<div className="min-w-0 flex-1">
+																<div className="flex items-center gap-1.5">
+																	<p className="truncate text-sm">{it.label}</p>
+																	{it.isLive && (
+																		<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">자동</span>
+																	)}
+																</div>
+																{it.notes && <p className="truncate text-xs text-muted-foreground">{it.notes}</p>}
 															</div>
-															{it.notes && <p className="truncate text-xs text-muted-foreground">{it.notes}</p>}
+															<p className="shrink-0 text-sm font-medium">{toWon(it.amount)}원</p>
 														</div>
-														<p className="shrink-0 text-sm font-medium">{toWon(it.amount)}원</p>
-													</div>
-												))}
-										</CardContent>
-									</Card>
-								))
+													))}
+											</CardContent>
+										</Card>
+									))}
+								</>
 							)}
 							<DialogFooter className="flex-col gap-2 space-x-0 sm:space-x-0">
 								<Button type="button" className="w-full" onClick={() => onOpenEditBuilder(detailReport)}>수정</Button>
