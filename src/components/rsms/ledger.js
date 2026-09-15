@@ -365,19 +365,48 @@ export default function Ledger({ bldId }) {
 
 	// 붙여넣기/엑셀 파일 업로드 둘 다 결국 "항목 배열을 한 번에 등록"이라 이 함수 하나로 같이 쓴다.
 	// 지금 고른 통장 탭이 있으면, 대량 등록도 "내역 추가"(단건)와 똑같이 그 통장으로 넣는다.
+	//
+	// 중복 방지: 날짜+입금/출금 금액+목적+비고가 전부 같은 내역은 이미 있는 걸로 보고 건너뛴다.
+	// (날짜+금액만 보면, 같은 날 같은 금액이지만 실제로는 서로 다른 거래 - 예: 건물 여러 채의
+	// 전기요금이 같은 날 같은 금액으로 각각 빠져나가는 경우 - 까지 중복으로 오인해 빠뜨리게 된다.
+	// 목적/비고까지 같이 봐야 이런 진짜 거래는 살리면서 진짜 중복만 걸러낼 수 있다.)
+	// 같은 파일/붙여넣기 안에 중복된 줄이 있을 때도 한 번만 등록되도록, 확인해가며 키를 계속 채운다.
 	const importEntries = useCallback(async (entries) => {
+		const dedupKey = (row) => `${row.date}|${row.income || 0}|${row.expense || 0}|${(row.purpose || '').trim()}|${(row.notes || '').trim()}`;
+		const scopedExisting = selectedAccountId ? ledger.filter((row) => row.bankAccountId === selectedAccountId) : ledger;
+		const seenKeys = new Set(scopedExisting.map(dedupKey));
+
+		const uniqueEntries = [];
+		let duplicateCount = 0;
+		for (const entry of entries) {
+			const key = dedupKey(entry);
+			if (seenKeys.has(key)) {
+				duplicateCount += 1;
+				continue;
+			}
+			seenKeys.add(key);
+			uniqueEntries.push(entry);
+		}
+
+		const dupNote = duplicateCount > 0 ? ` (중복 ${duplicateCount}건 제외)` : '';
+
+		if (uniqueEntries.length === 0) {
+			toast.warning(`이미 등록된 내역과 같아서 ${duplicateCount}건 모두 건너뛰었습니다.`);
+			return;
+		}
+
 		const results = await Promise.all(
-			entries.map((entry) => regLedger({ ...entry, bldId, bankAccountId: selectedAccountId }))
+			uniqueEntries.map((entry) => regLedger({ ...entry, bldId, bankAccountId: selectedAccountId }))
 		);
 		const failCount = results.filter((r) => !r).length;
 
 		if (failCount > 0) {
-			toast.warning(`${entries.length - failCount}건 등록, ${failCount}건 실패했습니다.`);
+			toast.warning(`${uniqueEntries.length - failCount}건 등록, ${failCount}건 실패했습니다.${dupNote}`);
 		} else {
-			toast.success(`${entries.length}건 등록되었습니다.`);
+			toast.success(`${uniqueEntries.length}건 등록되었습니다.${dupNote}`);
 		}
 		invalidate();
-	}, [bldId, invalidate, selectedAccountId]);
+	}, [bldId, invalidate, selectedAccountId, ledger]);
 
 	const onBulkImport = useCallback(async () => {
 		if (bulkEntries.length === 0) {
