@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectGroup, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 
 const NEW_REPORT_VALUE = '__new__';
 const NO_REPORT_VALUE = '__none__';
@@ -208,6 +209,36 @@ export default function LedgerTemplateSettings() {
 		invalidate();
 	}, [form, invalidate, isNewReport, newReportTitle, isNewAccount, newAccountTitle, queryClient]);
 
+	// 목록에서 바로 켜고 끌 수 있게 - 다른 값은 그대로 두고 active만 뒤집어서 다시 저장한다
+	// (regLedgerTemplate이 매번 행 전체를 덮어쓰는 방식이라, 값을 안 실으면 지워진다).
+	const onToggleActive = useCallback(async (row) => {
+		const res = await regLedgerTemplate({
+			id: row.id,
+			bldId: row.bldId,
+			purpose: row.purpose,
+			income: row.income,
+			expense: row.expense,
+			interestRate: row.interestRate,
+			interestAmount: row.interestAmount,
+			borrowedDays: row.borrowedDays,
+			interestAuto: row.interestAuto,
+			notes: row.notes,
+			reportId: row.reportId,
+			bankAccountId: row.bankAccountId,
+			dayOfMonth: row.dayOfMonth,
+			startMonth: row.startMonth,
+			endMonth: row.endMonth,
+			intervalMonths: row.intervalMonths,
+			active: !row.active,
+			skipHoliday: row.skipHoliday,
+		});
+		if (!res) {
+			toast.error('저장에 실패했습니다.');
+			return;
+		}
+		invalidate();
+	}, [invalidate]);
+
 	const onDelete = useCallback(async () => {
 		const res = await delLedgerTemplate(form.id);
 		if (!res) {
@@ -262,6 +293,9 @@ export default function LedgerTemplateSettings() {
 								<div className="shrink-0 text-right text-sm font-semibold">
 									{row.income ? <p className="text-primary">+{toWon(row.income)}</p> : null}
 									{row.expense ? <p className="text-destructive">-{toWon(row.expense)}</p> : null}
+								</div>
+								<div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+									<Switch checked={row.active} onCheckedChange={() => onToggleActive(row)} />
 								</div>
 							</div>
 						))
