@@ -12,10 +12,12 @@ export async function GET(request) {
 	}
 	const ownerId = await resolveOwnerId(user);
 
+	// 사용 중(active)인 항목을 먼저, 꺼둔 항목은 아래로 - 그 안에서는 원래처럼 날짜순.
 	const { data, error } = await supabaseAdmin
 		.from('LedgerTemplates')
 		.select('*')
 		.eq('ownerId', ownerId)
+		.order('active', { ascending: false })
 		.order('dayOfMonth', { ascending: true });
 
 	if (error) {
