@@ -64,6 +64,11 @@ export async function POST(request) {
 		return new NextResponse(JSON.stringify({ message: '건물 정보가 없습니다.' }), { status: 400 });
 	}
 
+	// 날짜 없이도 저장되던 문제가 있었다 - 화면에서도 막지만, 여기서도 한 번 더 막는다.
+	if (!entry.date) {
+		return new NextResponse(JSON.stringify({ message: '날짜를 입력해주세요.' }), { status: 400 });
+	}
+
 	// 이 건물이 우리 가족 소유가 맞는지 확인
 	const { data: bld, error: bldError } = await supabaseAdmin
 		.from('Buildings')
