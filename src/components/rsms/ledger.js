@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowUpDown, CalendarClock, CheckSquare, ChevronLeft, ChevronRight, ClipboardPaste, Download, Landmark, Plus, Wallet } from 'lucide-react';
+import { ArrowUpDown, CalendarClock, CheckSquare, ChevronLeft, ChevronRight, ClipboardPaste, Download, Landmark, Plus, Upload, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
 
@@ -14,6 +14,7 @@ import koLocale from '@fullcalendar/core/locales/ko';
 import { regLedger, delLedger, saveLedgerReport, saveBankAccount } from '@/utils/core';
 import { useLedgerQuery, useLedgerReportsQuery, useBankAccountsQuery } from '@/hooks/queries';
 import { parseBulkLedgerText } from '@/utils/ledgerImport';
+import { parseLedgerXlsxFile } from '@/utils/ledgerXlsxImport';
 import { downloadLedgerCsv } from '@/utils/ledgerExport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,6 +87,9 @@ export default function Ledger({ bldId }) {
 	const [isBulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState('');
 	const [bulkSubmitting, setBulkSubmitting] = useState(false);
+	// 은행/신협 "거래내역조회" 엑셀 파일(.xlsx)을 그대로 올려서 자동 등록하는 기능.
+	const xlsxFileInputRef = useRef(null);
+	const [xlsxImporting, setXlsxImporting] = useState(false);
 	const [viewMode, setViewMode] = useState('month'); // 'all' | 'month' | 'year'
 	const [periodDate, setPeriodDate] = useState(() => dayjs());
 	// 월별 보기에서만 쓰는, 달력에서 클릭해 고른 날짜 (일정 캘린더와 같은 방식).
@@ -359,6 +363,22 @@ export default function Ledger({ bldId }) {
 
 	const bulkEntries = useMemo(() => parseBulkLedgerText(bulkText), [bulkText]);
 
+	// 붙여넣기/엑셀 파일 업로드 둘 다 결국 "항목 배열을 한 번에 등록"이라 이 함수 하나로 같이 쓴다.
+	// 지금 고른 통장 탭이 있으면, 대량 등록도 "내역 추가"(단건)와 똑같이 그 통장으로 넣는다.
+	const importEntries = useCallback(async (entries) => {
+		const results = await Promise.all(
+			entries.map((entry) => regLedger({ ...entry, bldId, bankAccountId: selectedAccountId }))
+		);
+		const failCount = results.filter((r) => !r).length;
+
+		if (failCount > 0) {
+			toast.warning(`${entries.length - failCount}건 등록, ${failCount}건 실패했습니다.`);
+		} else {
+			toast.success(`${entries.length}건 등록되었습니다.`);
+		}
+		invalidate();
+	}, [bldId, invalidate, selectedAccountId]);
+
 	const onBulkImport = useCallback(async () => {
 		if (bulkEntries.length === 0) {
 			toast.warning('인식된 항목이 없습니다.');
@@ -366,24 +386,40 @@ export default function Ledger({ bldId }) {
 		}
 		setBulkSubmitting(true);
 		try {
-			// 지금 고른 통장 탭이 있으면, 대량 등록도 "내역 추가"(단건)와 똑같이 그 통장으로 넣는다.
-			const results = await Promise.all(
-				bulkEntries.map((entry) => regLedger({ ...entry, bldId, bankAccountId: selectedAccountId }))
-			);
-			const failCount = results.filter((r) => !r).length;
-
-			if (failCount > 0) {
-				toast.warning(`${bulkEntries.length - failCount}건 등록, ${failCount}건 실패했습니다.`);
-			} else {
-				toast.success(`${bulkEntries.length}건 등록되었습니다.`);
-			}
+			await importEntries(bulkEntries);
 			setBulkText('');
 			setBulkOpen(false);
-			invalidate();
 		} finally {
 			setBulkSubmitting(false);
 		}
-	}, [bulkEntries, bldId, invalidate, selectedAccountId]);
+	}, [bulkEntries, importEntries]);
+
+	const onXlsxButtonClick = useCallback(() => {
+		xlsxFileInputRef.current?.click();
+	}, []);
+
+	// 파일 선택창에서 은행/신협 "거래내역조회" 엑셀(.xlsx)을 고르면, 바로 읽어서 등록까지 한 번에 한다.
+	const onXlsxFileChange = useCallback(async (e) => {
+		const file = e.target.files?.[0];
+		e.target.value = ''; // 같은 파일을 연달아 다시 골라도 change 이벤트가 나가도록 비워둔다.
+		if (!file) return;
+
+		setXlsxImporting(true);
+		try {
+			const entries = await parseLedgerXlsxFile(file);
+			if (entries.length === 0) {
+				toast.warning('엑셀 파일에서 거래 내역을 찾지 못했어요. 은행 "거래내역조회" 형식이 맞는지 확인해주세요.');
+				return;
+			}
+			await importEntries(entries);
+			setBulkOpen(false);
+		} catch (err) {
+			console.error('엑셀 파일 불러오기 실패:', err);
+			toast.error('엑셀 파일을 읽는 데 실패했습니다.');
+		} finally {
+			setXlsxImporting(false);
+		}
+	}, [importEntries]);
 
 	const onAddAccount = useCallback(async () => {
 		if (!newAccountName.trim()) {
@@ -738,7 +774,7 @@ export default function Ledger({ bldId }) {
 					<Plus className="size-4" /> 내역 추가
 				</Button>
 				<Button type="button" variant="outline" className="flex-1 gap-1.5" onClick={() => setBulkOpen(true)}>
-					<ClipboardPaste className="size-4" /> 엑셀 붙여넣기
+					<ClipboardPaste className="size-4" /> 엑셀 가져오기
 				</Button>
 				<Button type="button" variant="outline" className="flex-1 gap-1.5" onClick={onExportCsv}>
 					<Download className="size-4" /> 엑셀로 보기
@@ -748,11 +784,36 @@ export default function Ledger({ bldId }) {
 			<Dialog open={isBulkOpen} onOpenChange={setBulkOpen}>
 				<DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
 					<DialogHeader>
-						<DialogTitle>엑셀에서 붙여넣기</DialogTitle>
+						<DialogTitle>엑셀에서 가져오기</DialogTitle>
 						<DialogDescription>
-							날짜 / 목적 / 입금 / 출금 / 금리 / 이자 / 빌린일수 / 비고 순서의 표를 그대로 복사해서 붙여넣어주세요.
+							은행/신협에서 받은 거래내역 엑셀 파일을 그대로 올리거나, 표를 복사해서 붙여넣어주세요.
 						</DialogDescription>
 					</DialogHeader>
+
+					<div className="flex flex-col gap-1.5">
+						<Label>엑셀 파일 업로드</Label>
+						<input
+							ref={xlsxFileInputRef}
+							type="file"
+							accept=".xlsx,.xls"
+							className="hidden"
+							onChange={onXlsxFileChange}
+						/>
+						<Button type="button" variant="outline" className="gap-1.5" disabled={xlsxImporting} onClick={onXlsxButtonClick}>
+							<Upload className="size-4" /> {xlsxImporting ? '가져오는 중...' : '거래내역 엑셀 파일(.xlsx) 선택'}
+						</Button>
+						<p className="text-xs text-muted-foreground">
+							&ldquo;거래내역조회&rdquo;로 받은 파일을 수정 없이 그대로 올리면 날짜·입금·출금이 자동으로 등록돼요.
+						</p>
+					</div>
+
+					<div className="flex items-center gap-2 text-xs text-muted-foreground">
+						<div className="h-px flex-1 bg-border" /> 또는 표 붙여넣기 <div className="h-px flex-1 bg-border" />
+					</div>
+
+					<p className="text-xs text-muted-foreground">
+						날짜 / 목적 / 입금 / 출금 / 금리 / 이자 / 빌린일수 / 비고 순서의 표를 그대로 복사해서 붙여넣어주세요.
+					</p>
 					<Textarea
 						className="h-[300px] font-mono text-xs"
 						value={bulkText}
