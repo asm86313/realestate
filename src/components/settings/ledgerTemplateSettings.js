@@ -273,10 +273,10 @@ export default function LedgerTemplateSettings() {
 						templates.map((row) => (
 							<div
 								key={row.id}
-								className="flex cursor-pointer items-center justify-between gap-3 rounded-md border p-3"
+								className="flex cursor-pointer items-center gap-3 rounded-md border p-3"
 								onClick={() => onEditRow(row)}
 							>
-								<div className="flex min-w-0 items-center gap-3">
+								<div className="flex min-w-0 flex-1 items-center gap-3">
 									<div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
 										<Repeat className="size-4" />
 									</div>
@@ -290,7 +290,8 @@ export default function LedgerTemplateSettings() {
 										</p>
 									</div>
 								</div>
-								<div className="shrink-0 text-right text-sm font-semibold">
+								{/* 금액 열 너비를 고정해서, 목적 글자수가 행마다 달라도 숫자가 세로로 같은 자리에 맞춰지게 한다. */}
+								<div className="min-w-24 shrink-0 text-right text-sm font-semibold tabular-nums">
 									{row.income ? <p className="text-primary">+{toWon(row.income)}</p> : null}
 									{row.expense ? <p className="text-destructive">-{toWon(row.expense)}</p> : null}
 								</div>
