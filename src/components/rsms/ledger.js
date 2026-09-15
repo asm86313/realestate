@@ -119,7 +119,8 @@ export default function Ledger({ bldId }) {
 		// 지금 특정 카테고리로 필터링해서 보고 있었으면, 새 내역도 그 카테고리로 미리 체크해준다.
 		const prefilledReportIds =
 			categoryFilter !== ALL_CATEGORY_FILTER && categoryFilter !== NO_CATEGORY_FILTER ? [Number(categoryFilter)] : [];
-		setForm({ ...initialForm, bankAccountId: selectedAccountId, reportIds: prefilledReportIds });
+		// 날짜를 안 넣고도 저장되던 문제가 있었어서, 기본값을 오늘 날짜로 미리 채워둔다.
+		setForm({ ...initialForm, date: dayjs().format('YYYY-MM-DD'), bankAccountId: selectedAccountId, reportIds: prefilledReportIds });
 		setNewReportTitle('');
 		setNewAccount(false);
 		setNewAccountTitle('');
@@ -297,6 +298,11 @@ export default function Ledger({ bldId }) {
 	}, []);
 
 	const onSave = useCallback(async () => {
+		if (!form.date) {
+			toast.warning('날짜를 입력해주세요.');
+			return;
+		}
+
 		let bankAccountId = form.bankAccountId;
 
 		// "새 통장 추가"를 골랐으면 저장 전에 그 통장부터 만든다 (같은 이름 있으면 서버가 재사용).
